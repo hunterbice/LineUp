@@ -1,14 +1,16 @@
-const CACHE_NAME = "lineup-pwa-v11";
+const CACHE_NAME = "lineup-pwa-v23";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./manifest.webmanifest",
   "./offline.html",
-  "./icons/icon.svg",
+  "./icons/favicon-32.png",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
   "./icons/maskable-512.png",
   "./icons/apple-touch-icon.png",
+  "./assets/LineUp_Header_Wordmark_2x.png",
+  "./assets/LineUp_Splash_Wordmark_2x.png",
   "./brand-assets/gentle-bens-logo.png",
   "./brand-assets/frog-firkin-logo.png"
 ];

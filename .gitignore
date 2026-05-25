@@ -1,8 +1,22 @@
 .DS_Store
 *.log
 
-# Local visual QA screenshots
+# Claude config
+.claude/
+
+# Visual QA screenshots
 pwa-check.png
 calm-card-check.png
 premium-style-check.png
 close-threshold-check.png
+lineup-intel-qa.png
+lineup-map-qa.png
+lineup-map-qa-v2.png
+lineup-map-qa-v3.png
+lineup-pulse-planner-qa.png
+
+# Build/handoff artifacts
+LineUp-Master-Handoff.docx
+LineUp-Master-Handoff.md
+build_master_handoff_docx.py
+dissected-docx-media/
