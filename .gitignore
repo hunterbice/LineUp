@@ -1,0 +1,8 @@
+.DS_Store
+*.log
+
+# Local visual QA screenshots
+pwa-check.png
+calm-card-check.png
+premium-style-check.png
+close-threshold-check.png
