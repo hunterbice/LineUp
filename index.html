@@ -10,7 +10,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="LineUp">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="icons/favicon-32.png?v=34" sizes="32x32" type="image/png">
+<link rel="icon" href="icons/favicon-32.png?v=36" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <title>LineUp</title>
 <style>
@@ -38,7 +38,7 @@ a{color:inherit}
 .brand-block{display:flex;flex-direction:column;gap:4px;min-width:0}
 .logo-wordmark{width:128px;max-width:calc(100vw - 88px);height:auto;display:block;object-fit:contain}
 .app-subtitle{font-size:12px;font-weight:750;color:var(--sub);display:flex;align-items:center;gap:5px;white-space:nowrap}
-.live-dot{width:6px;height:6px;border-radius:999px;background:var(--brand);box-shadow:0 0 10px var(--brand-glow);animation:liveBlink 2.8s infinite}
+.live-dot{width:6px;height:6px;border-radius:999px;background:var(--brand);box-shadow:0 0 10px var(--brand-glow);animation:liveBlink 2.2s infinite}
 /* ── SPLASH ── */
 .splash-screen{position:fixed;inset:0;z-index:9999;background:radial-gradient(circle at center,rgba(255,255,255,.035),transparent 28%),linear-gradient(180deg,#0A0B10 0%,#07080B 100%);display:flex;align-items:center;justify-content:center;transition:opacity .35s ease}
 .splash-screen.out{opacity:0;pointer-events:none}
@@ -53,8 +53,8 @@ a{color:inherit}
 @keyframes upGlowPulse{0%,100%{opacity:.12}50%{opacity:.30}}
 @keyframes taglineFade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 .notify{margin-left:auto;width:44px;height:44px;border-radius:16px;background:var(--surface);border:1px solid var(--border);display:grid;place-items:center;position:relative;cursor:pointer}
-.notify::after{content:"";position:absolute;right:10px;top:9px;width:8px;height:8px;border-radius:50%;background:var(--brand);box-shadow:0 0 12px var(--brand);animation:liveBlink 2.8s infinite}
-@keyframes pulse{50%{opacity:.38}}@keyframes liveBlink{0%,100%{opacity:1;box-shadow:0 0 12px var(--brand)}50%{opacity:.45;box-shadow:0 0 4px var(--brand)}}.heartbeat{width:22px;height:22px;display:block}.heartbeat path{fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}.heartbeat.live-motion .trace{stroke-dasharray:64;animation:beatTrace 3.4s linear infinite}@keyframes beatTrace{from{stroke-dashoffset:64}to{stroke-dashoffset:0}}body:not([data-page="livePage"]) .topbar .seg{display:none}
+.notify::after{content:"";position:absolute;right:10px;top:9px;width:8px;height:8px;border-radius:50%;background:var(--brand);box-shadow:0 0 12px var(--brand);animation:liveBlink 2.2s infinite}
+@keyframes pulse{50%{opacity:.38}}@keyframes liveBlink{0%,100%{opacity:1;box-shadow:0 0 12px var(--brand)}50%{opacity:.45;box-shadow:0 0 4px var(--brand)}}.heartbeat{width:22px;height:22px;display:block}.heartbeat path{fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}.heartbeat.live-motion .trace{stroke-dasharray:64;animation:beatTrace 1.75s linear infinite}@keyframes beatTrace{from{stroke-dashoffset:64}to{stroke-dashoffset:0}}body:not([data-page="livePage"]) .topbar .seg{display:none}
 .seg{height:44px;background:#0D0F14;border:1px solid var(--border);border-radius:14px;padding:4px;display:flex;gap:4px;margin-top:14px}
 .seg button{flex:1;border:0;border-radius:11px;background:transparent;color:var(--sub);font-weight:800;font-size:13px;cursor:pointer}
 .seg button.on{background:var(--brand);color:#021311;box-shadow:0 0 18px rgba(18,224,196,.2)}
