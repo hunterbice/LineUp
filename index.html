@@ -44,11 +44,12 @@ a{color:inherit}
 .splash-screen.out{opacity:0;pointer-events:none}
 .splash-content{display:flex;flex-direction:column;align-items:center;gap:14px;animation:splashFadeIn 420ms ease-out both}
 .splash-logo-wrap{position:relative;display:inline-flex;align-items:center;justify-content:center;background:transparent;border:none;box-shadow:none;padding:0;isolation:isolate;animation:logoLift 900ms ease-out both}
-.splash-logo-wrap::before{content:"";position:absolute;right:0%;top:18%;width:38%;height:64%;background:radial-gradient(circle at center,rgba(18,224,196,.32) 0%,rgba(18,224,196,.18) 34%,rgba(18,224,196,.06) 58%,transparent 76%);filter:blur(22px);border-radius:999px;z-index:0;pointer-events:none;transform:translateX(4%);animation:upGlowPulse 1600ms ease-in-out infinite}
+.splash-logo-wrap::before{content:"";position:absolute;right:0%;top:18%;width:45%;height:80%;background:radial-gradient(circle at center,rgba(18,224,196,.6) 0%,rgba(18,224,196,.32) 34%,rgba(18,224,196,.10) 58%,transparent 76%);filter:blur(26px);border-radius:999px;z-index:0;pointer-events:none;transform:translateX(4%);animation:upGlowFlash 900ms ease-in-out 550ms both,upGlowPulse 2400ms ease-in-out 1500ms infinite}
 .splash-logo{position:relative;z-index:1;width:min(68vw,260px);height:auto;display:block;object-fit:contain;background:transparent;border:none;box-shadow:none}
 .splash-tagline{font-size:13px;font-weight:600;color:var(--sub);letter-spacing:.02em;opacity:0;animation:taglineFade 500ms ease-out 700ms forwards}
 @keyframes splashFadeIn{from{opacity:0}to{opacity:1}}
 @keyframes logoLift{from{opacity:0;transform:scale(.96) translateY(8px)}to{opacity:1;transform:scale(1) translateY(0)}}
+@keyframes upGlowFlash{0%{opacity:0;transform:translateX(4%) scale(.7)}50%{opacity:1;transform:translateX(4%) scale(1.1)}100%{opacity:.65;transform:translateX(4%) scale(1)}}
 @keyframes upGlowPulse{0%,100%{opacity:.65;transform:translateX(4%) scale(.96)}50%{opacity:1;transform:translateX(4%) scale(1.04)}}
 @keyframes taglineFade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 .notify{margin-left:auto;width:44px;height:44px;border-radius:16px;background:var(--surface);border:1px solid var(--border);display:grid;place-items:center;position:relative;cursor:pointer}
