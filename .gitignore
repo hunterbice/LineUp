@@ -1,5 +1,10 @@
 .DS_Store
 *.log
+.env
+.env.local
+.env.*
+!/.env.example
+data/besttime-venues.json
 
 # Claude config
 .claude/

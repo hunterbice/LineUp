@@ -77,6 +77,33 @@ The app is hosted on GitHub Pages with a custom domain via `CNAME`.
 
 ---
 
+## BestTime Setup
+
+BestTime uses a private key for creating venue forecasts and a public key for reading/querying existing venue data. Never commit the private key.
+
+1. Create a local env file from the example:
+
+```bash
+cp .env.example .env.local
+```
+
+2. Paste your BestTime keys into `.env.local`.
+
+3. Load the env file and seed the active LineUp venues:
+
+```bash
+set -a
+source .env.local
+set +a
+node scripts/besttime-seed.mjs
+```
+
+This creates `data/besttime-venues.json`, which is intentionally ignored by Git. The file maps each active LineUp venue to the BestTime venue id returned by the API.
+
+Security note: if a private key is ever shown in a screenshot, chat, or public page, rotate it in BestTime before launch.
+
+---
+
 ## Runtime Files
 
 | File | Purpose |
@@ -88,6 +115,8 @@ The app is hosted on GitHub Pages with a custom domain via `CNAME`.
 | `icons/` | All PWA and favicon icon sizes |
 | `assets/` | Wordmark images |
 | `brand-assets/` | Venue logos |
+| `scripts/besttime-seed.mjs` | Local-only helper to create BestTime venue forecasts |
+| `data/besttime-venues.example.json` | Safe example shape for generated BestTime venue data |
 
 ---
 

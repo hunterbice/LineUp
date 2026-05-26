@@ -1,0 +1,5 @@
+{
+  "updatedAt": null,
+  "source": "Run scripts/besttime-seed.mjs to create data/besttime-venues.json",
+  "venues": {}
+}
