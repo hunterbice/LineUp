@@ -1,4 +1,4 @@
-const CACHE_NAME = "lineup-pwa-v27";
+const CACHE_NAME = "lineup-pwa-v33";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -12,7 +12,13 @@ const APP_SHELL = [
   "./assets/LineUp_Header_Wordmark_2x.png",
   "./assets/LineUp_Splash_Wordmark_2x.png",
   "./brand-assets/gentle-bens-logo.png",
-  "./brand-assets/frog-firkin-logo.png"
+  "./brand-assets/frog-firkin-logo.png",
+  "./brand-assets/fuku-logo.png",
+  "./brand-assets/agave-house-logo.png",
+  "./brand-assets/no-anchovies-logo.png",
+  "./brand-assets/saddle-logo.png",
+  "./brand-assets/blind-pig-logo.png",
+  "./brand-assets/petes-logo.png"
 ];
 
 self.addEventListener("install", (event) => {
