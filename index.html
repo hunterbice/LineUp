@@ -45,11 +45,11 @@ a{color:inherit}
 .splash-content{display:flex;flex-direction:column;align-items:center;gap:14px;animation:splashFadeIn 420ms ease-out both}
 .splash-logo-wrap{position:relative;display:inline-block;animation:logoLift 900ms ease-out both}
 .splash-logo{width:240px;height:auto;display:block;position:relative;z-index:1}
-.splash-up-glow{position:absolute;right:-18%;top:50%;transform:translateY(-50%);width:65%;height:200%;border-radius:50%;background:rgba(18,224,196,.9);filter:blur(52px);opacity:0;z-index:0;pointer-events:none;animation:upGlow 900ms ease-in-out 550ms both}
+.splash-up-glow{position:absolute;right:-20%;top:50%;transform:translateY(-50%);width:68%;height:220%;border-radius:50%;background:rgba(18,224,196,.85);filter:blur(52px);opacity:0;z-index:2;pointer-events:none;animation:upGlow 900ms ease-in-out 550ms both}
 .splash-tagline{font-size:13px;font-weight:600;color:var(--sub);letter-spacing:.02em;opacity:0;animation:taglineFade 500ms ease-out 700ms forwards}
 @keyframes splashFadeIn{from{opacity:0}to{opacity:1}}
 @keyframes logoLift{from{opacity:0;transform:scale(.96) translateY(8px)}to{opacity:1;transform:scale(1) translateY(0)}}
-@keyframes upGlow{0%{opacity:0}50%{opacity:.55}100%{opacity:.15}}
+@keyframes upGlow{0%{opacity:0}50%{opacity:.4}100%{opacity:.12}}
 @keyframes taglineFade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 .notify{margin-left:auto;width:44px;height:44px;border-radius:16px;background:var(--surface);border:1px solid var(--border);display:grid;place-items:center;position:relative;cursor:pointer}
 .notify::after{content:"";position:absolute;right:10px;top:9px;width:8px;height:8px;border-radius:50%;background:var(--brand);box-shadow:0 0 12px var(--brand);animation:liveBlink 2.8s infinite}
