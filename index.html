@@ -40,16 +40,16 @@ a{color:inherit}
 .app-subtitle{font-size:12px;font-weight:750;color:var(--sub);display:flex;align-items:center;gap:5px;white-space:nowrap}
 .live-dot{width:6px;height:6px;border-radius:999px;background:var(--brand);box-shadow:0 0 10px var(--brand-glow);animation:liveBlink 2.8s infinite}
 /* ── SPLASH ── */
-.splash-screen{position:fixed;inset:0;z-index:9999;background:radial-gradient(circle at center,#101116 0%,#07080B 65%);display:flex;align-items:center;justify-content:center;transition:opacity .35s ease}
+.splash-screen{position:fixed;inset:0;z-index:9999;background:radial-gradient(circle at center,rgba(255,255,255,.035),transparent 28%),linear-gradient(180deg,#0A0B10 0%,#07080B 100%);display:flex;align-items:center;justify-content:center;transition:opacity .35s ease}
 .splash-screen.out{opacity:0;pointer-events:none}
 .splash-content{display:flex;flex-direction:column;align-items:center;gap:14px;animation:splashFadeIn 420ms ease-out both}
-.splash-logo-wrap{position:relative;display:inline-block;animation:logoLift 900ms ease-out both}
-.splash-logo{width:240px;height:auto;display:block;position:relative;z-index:1;mix-blend-mode:screen}
-.splash-up-glow{position:absolute;right:-20%;top:50%;transform:translateY(-50%);width:68%;height:220%;border-radius:50%;background:rgba(18,224,196,.85);filter:blur(52px);opacity:0;z-index:2;pointer-events:none;animation:upGlow 900ms ease-in-out 550ms both}
+.splash-logo-wrap{position:relative;display:inline-flex;align-items:center;justify-content:center;background:transparent;border:none;box-shadow:none;padding:0;isolation:isolate;animation:logoLift 900ms ease-out both}
+.splash-logo-wrap::before{content:"";position:absolute;right:0%;top:18%;width:38%;height:64%;background:radial-gradient(circle at center,rgba(18,224,196,.32) 0%,rgba(18,224,196,.18) 34%,rgba(18,224,196,.06) 58%,transparent 76%);filter:blur(22px);border-radius:999px;z-index:0;pointer-events:none;transform:translateX(4%);animation:upGlowPulse 1600ms ease-in-out infinite}
+.splash-logo{position:relative;z-index:1;width:min(68vw,260px);height:auto;display:block;object-fit:contain;background:transparent;border:none;box-shadow:none}
 .splash-tagline{font-size:13px;font-weight:600;color:var(--sub);letter-spacing:.02em;opacity:0;animation:taglineFade 500ms ease-out 700ms forwards}
 @keyframes splashFadeIn{from{opacity:0}to{opacity:1}}
 @keyframes logoLift{from{opacity:0;transform:scale(.96) translateY(8px)}to{opacity:1;transform:scale(1) translateY(0)}}
-@keyframes upGlow{0%{opacity:0}50%{opacity:.45}100%{opacity:.08}}
+@keyframes upGlowPulse{0%,100%{opacity:.65;transform:translateX(4%) scale(.96)}50%{opacity:1;transform:translateX(4%) scale(1.04)}}
 @keyframes taglineFade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 .notify{margin-left:auto;width:44px;height:44px;border-radius:16px;background:var(--surface);border:1px solid var(--border);display:grid;place-items:center;position:relative;cursor:pointer}
 .notify::after{content:"";position:absolute;right:10px;top:9px;width:8px;height:8px;border-radius:50%;background:var(--brand);box-shadow:0 0 12px var(--brand);animation:liveBlink 2.8s infinite}
@@ -92,8 +92,7 @@ a{color:inherit}
 <div id="splash" class="splash-screen">
   <div class="splash-content">
     <div class="splash-logo-wrap">
-      <img src="assets/LineUp_Splash_Wordmark_2x.png" alt="LineUp" class="splash-logo">
-      <div class="splash-up-glow"></div>
+      <img src="assets/LineUp_Header_Wordmark_2x.png" alt="LineUp" class="splash-logo">
     </div>
     <div class="splash-tagline">Know the move before you move.</div>
   </div>
