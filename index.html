@@ -43,11 +43,13 @@ a{color:inherit}
 .splash-screen{position:fixed;inset:0;z-index:9999;background:radial-gradient(circle at center,#101116 0%,#07080B 65%);display:flex;align-items:center;justify-content:center;transition:opacity .35s ease}
 .splash-screen.out{opacity:0;pointer-events:none}
 .splash-content{display:flex;flex-direction:column;align-items:center;gap:14px;animation:splashFadeIn 420ms ease-out both}
-.splash-logo{width:240px;height:auto;display:block;animation:logoLift 900ms ease-out both,logoGlow 600ms ease-in-out 450ms both}
-.splash-tagline{font-size:13px;font-weight:600;color:var(--sub);letter-spacing:.02em;opacity:0;animation:taglineFade 500ms ease-out 600ms forwards}
+.splash-logo-wrap{position:relative;display:inline-block;animation:logoLift 900ms ease-out both}
+.splash-logo{width:240px;height:auto;display:block;position:relative;z-index:1}
+.splash-up-glow{position:absolute;right:-8%;top:50%;transform:translateY(-50%);width:55%;height:120%;border-radius:50%;background:rgba(18,224,196,.42);filter:blur(28px);opacity:0;z-index:2;pointer-events:none;mix-blend-mode:screen;animation:upGlow 800ms ease-in-out 600ms both}
+.splash-tagline{font-size:13px;font-weight:600;color:var(--sub);letter-spacing:.02em;opacity:0;animation:taglineFade 500ms ease-out 700ms forwards}
 @keyframes splashFadeIn{from{opacity:0}to{opacity:1}}
 @keyframes logoLift{from{opacity:0;transform:scale(.96) translateY(8px)}to{opacity:1;transform:scale(1) translateY(0)}}
-@keyframes logoGlow{0%{filter:drop-shadow(0 0 0px rgba(18,224,196,0))}50%{filter:drop-shadow(0 0 22px rgba(18,224,196,.6))}100%{filter:drop-shadow(0 0 8px rgba(18,224,196,.18))}}
+@keyframes upGlow{0%{opacity:0}50%{opacity:1}100%{opacity:.22}}
 @keyframes taglineFade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 .notify{margin-left:auto;width:44px;height:44px;border-radius:16px;background:var(--surface);border:1px solid var(--border);display:grid;place-items:center;position:relative;cursor:pointer}
 .notify::after{content:"";position:absolute;right:10px;top:9px;width:8px;height:8px;border-radius:50%;background:var(--brand);box-shadow:0 0 12px var(--brand);animation:liveBlink 2.8s infinite}
@@ -89,7 +91,10 @@ a{color:inherit}
 <body>
 <div id="splash" class="splash-screen">
   <div class="splash-content">
-    <img src="assets/LineUp_Splash_Wordmark_2x.png" alt="LineUp" class="splash-logo">
+    <div class="splash-logo-wrap">
+      <img src="assets/LineUp_Splash_Wordmark_2x.png" alt="LineUp" class="splash-logo">
+      <div class="splash-up-glow"></div>
+    </div>
     <div class="splash-tagline">Know the move before you move.</div>
   </div>
 </div>
@@ -225,7 +230,7 @@ renderAll();setInterval(renderAll,60000);
     }
   },{passive:true});
 })();
-(function(){var s=document.getElementById("splash");setTimeout(function(){s.classList.add("out");setTimeout(function(){s.style.display="none"},400)},1600)})();
+(function(){var s=document.getElementById("splash");setTimeout(function(){s.classList.add("out");setTimeout(function(){s.style.display="none"},400)},3200)})();
 if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("./sw.js").catch(function(){})})}
 </script>
 </body>
