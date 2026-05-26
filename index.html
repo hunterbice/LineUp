@@ -141,7 +141,7 @@ a{color:inherit}
       </div>
       <button class="notify" aria-label="Live alerts" onclick="showToast('Live alerts are on for this prototype')"><svg class="heartbeat live-motion" viewBox="0 0 32 24" aria-hidden="true"><path class="trace" d="M2 13h6l3-8 5 16 4-10 3 2h7"/></svg></button>
     </div>
-    <div class="seg"><button id="tabU" class="on">📍 Main Gate</button><button id="tabP">4th / Downtown</button></div>
+    <div class="seg"><button id="tabU" class="on">University</button><button id="tabP">Downtown</button></div>
   </header>
   <main id="livePage" class="page active"></main>
   <main id="mapPage" class="page"></main>
@@ -265,7 +265,7 @@ function lineLeap(b){return b.lineLeap||("https://tickets.lineleap.com/search?se
 function liveIcon(){return '<svg class="heartbeat" viewBox="0 0 32 24" aria-hidden="true"><path class="trace" d="M2 13h6l3-8 5 16 4-10 3 2h7"/></svg>'}
 function activeBars(){return BARS.filter(b=>b.status==="active"&&!b.deprecated)}
 function barsInArea(){return activeBars().filter(b=>b.area===area)}
-function areaName(v){return v==="main_gate"?"Main Gate":"4th / Downtown"}
+function areaName(v){return v==="main_gate"?"University":"Downtown"}
 function coverLabel(b){return b.coverActive&&b.cover&&b.cover!=="$0"?b.cover:""}
 function sortedByCrowd(list){return [...list].sort((a,b)=>LEVELS[b.lvl].pct-LEVELS[a.lvl].pct||b.wait-a.wait)}
 function openMaps(b){window.open("https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(b.mapQuery||b.name+" "+b.address),"_blank","noopener")}
