@@ -104,6 +104,76 @@ Security note: if a private key is ever shown in a screenshot, chat, or public p
 
 ---
 
+## Supabase Backend
+
+Supabase project:
+
+```text
+https://bxngqqsxthybjikmwvqj.supabase.co
+```
+
+Current backend tables:
+
+| Table | Purpose |
+|---|---|
+| `venues` | Source-of-truth venue metadata, addresses, coordinates, areas, hours, and links |
+| `live_status` | Current crowd, line wait, confidence, momentum, cover, event, freshness, and sources |
+| `reports` | User-submitted crowd and line reports |
+| `confidence_sources` | Source weights for confidence scoring, including venue updates, scouts, reports, photos, BestTime, geofence activity, app interest, events, and historical baseline |
+| `venue_confidence_signals` | Individual confidence inputs observed for a venue, with reliability, freshness decay, source type, and optional metadata |
+| `reporter_reliability` | Device/user trust scores for future agreement-based weighting |
+| `venue_hourly_priors` | Per-venue, per-day, per-hour baseline curves used when live reports are sparse |
+| `app_signal_events` | First-party intent telemetry such as detail views, directions taps, favorites, LineLeap taps, and report opens |
+| `ground_truth_observations` | Manual calibration observations from launch-night headcounts, lines, photos, and notes |
+| `venue_admins` | Future Supabase Auth permissions for owners and venue staff |
+| `reward_events` | Future server-backed rewards ledger |
+
+The app now reads from the `active_venue_status` view when Supabase is available and falls back to local prototype data if it is offline. User reports update the UI immediately and also insert into Supabase in the background.
+
+Confidence is no longer just a static label. The backend computes a signal score from source quality, reliability, and freshness. High-trust inputs such as owner/venue updates and verified scouts carry more weight, while historical baseline and app interest help fill gaps without pretending to be live proof. User reports automatically create confidence signals, and every signal fades over time so stale reads lose influence as the night changes.
+
+Data-source strategy:
+
+- Treat crowdsourced reports, venue/admin updates, verified scouts, and verified photos as the primary year-one live truth layer.
+- Treat BestTime Basic as a forecast/prior provider, not as ground truth. Do not pay for live BestTime until Tucson venue coverage is manually validated.
+- Do not scrape Google Popular Times, Snap Map, Instagram locations, or other private/social APIs. They create ToS and investor-diligence risk.
+- Use first-party app behavior as a small supporting signal only: detail views, directions taps, map pin taps, favorites, LineLeap taps, report opens, and Pulse recommendations.
+- Use `venue_hourly_priors` for Bayesian shrinkage when reports are sparse.
+- Use `ground_truth_observations` to calibrate the model during launch nights.
+
+Initial model targets:
+
+- Line reports decay fastest, roughly 30 minutes.
+- Crowd reports decay slower, roughly 45-90 minutes.
+- Venue/admin and trusted scout signals decay slower than ordinary reports.
+- Baseline priors use a pseudo-count around `3` so sparse venues do not swing wildly from one report.
+- Public client reports cannot mark themselves GPS verified. Verified proximity should be added later through a Supabase Edge Function or native app backend check.
+
+Scoring engine:
+
+- `preview_venue_live_score(venue_id, as_of)` computes a live crowd score, wait estimate, confidence score, momentum, and source labels without mutating state.
+- `recompute_venue_live_status(venue_id, as_of)` writes the computed result into `live_status`.
+- `recompute_all_live_status(as_of)` refreshes every active venue.
+- New confidence signals and app intent events trigger recomputation for their venue.
+- Confidence is intentionally stricter than crowd scoring: baseline priors can move the displayed estimate, but they do not count as fresh live inputs.
+
+Real source ingestion:
+
+- `venue-status-ingest` is a Supabase Edge Function that lets the current staff/owner flow submit venue updates into `venue_confidence_signals`. This is a temporary bridge for the existing `2244` / `4444` prototype access codes; production should replace it with Supabase Auth venue roles.
+- `besttime-prior-import` is a Supabase Edge Function scaffold for importing BestTime forecast curves into `venue_hourly_priors`. It requires a `BESTTIME_PUBLIC_KEY` Supabase secret and mapped `besttime_venue_id` values in `besttime_venue_map`.
+- BestTime should stay a forecast/prior source until Tucson live coverage is validated against manual ground truth.
+- The app now syncs in-app staff updates to Supabase, where they are treated as high-trust venue/admin signals and recompute the live score.
+
+Security status:
+
+- RLS is enabled on all public tables.
+- Venue/live status is publicly readable.
+- Public users can submit reports.
+- Staff/owner updates require future authenticated Supabase users.
+- The in-app `2244` / `4444` admin flow is still prototype-only and should be replaced by Supabase Auth before launch.
+
+---
+
 ## Runtime Files
 
 | File | Purpose |
