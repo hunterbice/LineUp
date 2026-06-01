@@ -57,6 +57,22 @@ async function main() {
     await page.waitForSelector("#livePage.active");
     await page.locator(".barcard").first().click();
     await page.waitForSelector("#detail.open");
+    await page.locator(".tabs2 button", { hasText: "Highlights" }).click();
+    await page.waitForSelector(".tabs2 button.on", { hasText: "Highlights" });
+    await page.locator(".tabs2 button", { hasText: "Intel" }).click();
+    await page.waitForSelector(".tabs2 button.on", { hasText: "Intel" });
+    await page.locator(".tabs2 button", { hasText: "Events" }).click();
+    await page.waitForSelector(".tabs2 button.on", { hasText: "Events" });
+    await page.locator(".cta", { hasText: "Report" }).click();
+    await page.waitForSelector("#reportSheet.open");
+    const busyReportButton = page.locator("#reportSheet .choicegrid").first().locator("button", { hasText: "BUSY" });
+    await busyReportButton.click();
+    await page.waitForFunction(() => {
+      const buttons = [...document.querySelectorAll("#reportSheet .choicegrid button")];
+      return buttons.some((button) => button.textContent?.includes("BUSY") && button.classList.contains("on"));
+    });
+    await page.locator("#reportSheet button", { hasText: "Cancel" }).click();
+    await page.waitForFunction(() => !document.querySelector("#reportSheet")?.classList.contains("open"));
     await page.locator("button[onclick='closeDetail()']").click();
     await page.waitForSelector("#detail:not(.open)");
 
