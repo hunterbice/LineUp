@@ -54,6 +54,8 @@ async function main() {
     });
 
     await page.goto(baseUrl, { waitUntil: "networkidle" });
+    await page.waitForSelector(".accountGate");
+    await page.locator(".accountGate button", { hasText: "Create LineUp Account" }).click();
     await page.waitForSelector("#livePage.active");
     await page.locator(".barcard").first().click();
     await page.waitForSelector("#detail.open");

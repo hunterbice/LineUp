@@ -7,6 +7,14 @@ function cleanText(value: unknown, max = 128) { return typeof value === "string"
 function cleanVenueList(value: unknown) {
   return Array.isArray(value) ? Array.from(new Set(value.map((item) => cleanText(item, 64)).filter(Boolean))).slice(0, 50) : [];
 }
+function cleanPrefs(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return { interaction_visibility: null, display_name: null };
+  const prefs = value as Record<string, unknown>;
+  const rawVisibility = cleanText(prefs.interaction_visibility, 24);
+  const visibility = rawVisibility === "public" || rawVisibility === "anonymous" ? rawVisibility : null;
+  const displayName = cleanText(prefs.display_name, 32);
+  return { interaction_visibility: visibility, display_name: displayName || null };
+}
 async function getUser(req: Request, supabase: ReturnType<typeof createClient>) {
   const auth = req.headers.get("Authorization") || "";
   const token = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
@@ -56,9 +64,20 @@ Deno.serve(async (req: Request) => {
   if (!verifiedDevice.ok) return jsonResponse({ error: verifiedDevice.error }, 401, req);
 
   try {
+    const prefs = cleanPrefs(body.preferences);
+    const { data: existingProfile } = await supabase
+      .from("user_profiles")
+      .select("display_name,interaction_visibility")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    const fallbackDisplayName = cleanText(user.user_metadata?.full_name, 80) || null;
+    const nextDisplayName = prefs.display_name ?? existingProfile?.display_name ?? fallbackDisplayName;
+    const nextVisibility = prefs.interaction_visibility || existingProfile?.interaction_visibility || "anonymous";
+
     await supabase.from("user_profiles").upsert({
       user_id: user.id,
-      display_name: cleanText(user.user_metadata?.full_name, 80) || null,
+      display_name: nextDisplayName,
+      interaction_visibility: nextVisibility,
       updated_at: new Date().toISOString(),
     }, { onConflict: "user_id" });
 
@@ -73,7 +92,11 @@ Deno.serve(async (req: Request) => {
       await claimDeviceData(supabase, user.id, deviceId);
       await upsertFavorites(supabase, user.id, cleanVenueList(body.favorites));
       const favorites = await getFavorites(supabase, user.id);
-      return jsonResponse({ ok: true, user: { id: user.id, is_anonymous: Boolean(user.is_anonymous) }, favorites }, 200, req);
+      return jsonResponse({ ok: true, user: { id: user.id, is_anonymous: Boolean(user.is_anonymous) }, preferences: { interaction_visibility: nextVisibility, display_name: nextDisplayName || "" }, favorites }, 200, req);
+    }
+
+    if (action === "update_profile") {
+      return jsonResponse({ ok: true, user: { id: user.id, is_anonymous: Boolean(user.is_anonymous) }, preferences: { interaction_visibility: nextVisibility, display_name: nextDisplayName || "" } }, 200, req);
     }
 
     if (action === "set_favorite") {
@@ -87,7 +110,7 @@ Deno.serve(async (req: Request) => {
         if (error) throw error;
       }
       const favorites = await getFavorites(supabase, user.id);
-      return jsonResponse({ ok: true, user: { id: user.id, is_anonymous: Boolean(user.is_anonymous) }, favorites }, 200, req);
+      return jsonResponse({ ok: true, user: { id: user.id, is_anonymous: Boolean(user.is_anonymous) }, preferences: { interaction_visibility: nextVisibility, display_name: nextDisplayName || "" }, favorites }, 200, req);
     }
 
     return jsonResponse({ error: "Unknown action" }, 400, req);

@@ -42,6 +42,17 @@ function normalizeArea(area: string | null | undefined) {
 function sinceMinutes(minutes: number) {
   return new Date(Date.now() - minutes * 60 * 1000).toISOString();
 }
+function cleanVisibility(value: unknown) {
+  return value === "public" ? "public" : "anonymous";
+}
+async function getUser(req: Request, supabase: ReturnType<typeof createClient>) {
+  const auth = req.headers.get("Authorization") || "";
+  const token = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
+  if (!token) return null;
+  const { data, error } = await supabase.auth.getUser(token);
+  if (error || !data?.user) return null;
+  return data.user;
+}
 
 async function tooManyRecentRows(
   supabase: ReturnType<typeof createClient>,
@@ -102,6 +113,10 @@ Deno.serve(async (req: Request) => {
   const supabase = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
+  const user = await getUser(req, supabase);
+  if (!user) return jsonResponse({ error: "LineUp account required" }, 401, req);
+  const interactionVisibility = cleanVisibility(body.interaction_visibility);
+  const displayName = typeof body.display_name === "string" ? body.display_name.slice(0, 32) : "";
 
   if (action === "report" && await tooManyRecentRows(supabase, "reports", deviceId, 6, 15)) {
     return jsonResponse({ error: "Too many reports. Try again later." }, 429, req);
@@ -141,6 +156,7 @@ Deno.serve(async (req: Request) => {
 
   const presenceSource = action === "check_in" ? "check_in" : action === "report" ? "report" : "foreground";
   await supabase.from("presence_snapshots").insert({
+    user_id: user.id,
     device_id: deviceId,
     session_id: sessionId,
     nearest_venue_id: nearest.id,
@@ -153,6 +169,7 @@ Deno.serve(async (req: Request) => {
     lng_rounded: roundCoord(lng),
     metadata: {
       action,
+      interaction_visibility: interactionVisibility,
       requested_venue_id: requestedVenueId,
       target_venue_id: target.id,
       target_distance_m: Math.round(target.distance_m * 100) / 100,
@@ -161,24 +178,28 @@ Deno.serve(async (req: Request) => {
 
   if (action === "check_in") {
     const { data: checkin, error: checkinError } = await supabase.from("venue_checkins").insert({
+      user_id: user.id,
       venue_id: target.id,
       device_id: deviceId,
       session_id: sessionId,
       distance_m: Math.round(target.distance_m * 100) / 100,
       accuracy_m: Math.round(accuracyM * 100) / 100,
       verified: targetVerified,
-      metadata: { nearest_venue_id: nearest.id, nearest_distance_m: Math.round(nearest.distance_m * 100) / 100 },
+      interaction_visibility: interactionVisibility,
+      metadata: { nearest_venue_id: nearest.id, nearest_distance_m: Math.round(nearest.distance_m * 100) / 100, interaction_visibility: interactionVisibility, display_name: displayName },
     }).select("id,verified,distance_m,accuracy_m,created_at").single();
 
     if (checkinError) return jsonResponse({ error: checkinError.message }, 500, req);
 
     if (targetVerified) {
       await supabase.from("app_signal_events").insert({
+        user_id: user.id,
         venue_id: target.id,
         event_type: "verified_check_in",
         device_id: deviceId,
         session_id: sessionId,
-        metadata: { distance_m: Math.round(target.distance_m), accuracy_m: Math.round(accuracyM) },
+        interaction_visibility: interactionVisibility,
+        metadata: { distance_m: Math.round(target.distance_m), accuracy_m: Math.round(accuracyM), interaction_visibility: interactionVisibility },
       });
       await supabase.from("venue_confidence_signals").insert({
         venue_id: target.id,
@@ -226,11 +247,15 @@ Deno.serve(async (req: Request) => {
       photo_signal: photoSignal,
       source: "user_report",
       device_id: deviceId,
+      user_id: user.id,
       location_verified: targetVerified,
+      interaction_visibility: interactionVisibility,
       distance_m: Math.round(target.distance_m * 100) / 100,
       reporter_reliability_snapshot: null,
       report_context: {
         submitted_via: "location-ingest",
+        interaction_visibility: interactionVisibility,
+        display_name: displayName,
         accuracy_m: Math.round(accuracyM),
         nearest_venue_id: nearest.id,
         nearest_distance_m: Math.round(nearest.distance_m),
@@ -251,18 +276,21 @@ Deno.serve(async (req: Request) => {
     const expiresMinutes = targetVerified ? 50 : 25;
 
     await supabase.from("app_signal_events").insert({
+      user_id: user.id,
       venue_id: target.id,
       event_type: targetVerified ? "verified_report" : "user_report",
       device_id: deviceId,
       session_id: sessionId,
       metadata: {
         report_id: report.id,
+        interaction_visibility: interactionVisibility,
         crowd_level: crowdLevel,
         wait_minutes: waitMinutes,
         distance_m: Math.round(target.distance_m),
         accuracy_m: Math.round(accuracyM),
         public_visible: publicVisible,
       },
+      interaction_visibility: interactionVisibility,
     });
 
     await supabase.from("venue_confidence_signals").insert({
@@ -277,6 +305,8 @@ Deno.serve(async (req: Request) => {
       expires_at: new Date(Date.now() + expiresMinutes * 60 * 1000).toISOString(),
       metadata: {
         report_id: report.id,
+        interaction_visibility: interactionVisibility,
+        display_name: displayName,
         distance_m: Math.round(target.distance_m),
         accuracy_m: Math.round(accuracyM),
         location_verified: targetVerified,
@@ -304,6 +334,7 @@ Deno.serve(async (req: Request) => {
   }
 
   await supabase.from("app_signal_events").insert({
+    user_id: user.id,
     venue_id: nearest.id,
     event_type: "presence_snapshot",
     device_id: deviceId,
@@ -312,7 +343,9 @@ Deno.serve(async (req: Request) => {
       distance_m: Math.round(nearest.distance_m),
       accuracy_m: Math.round(accuracyM),
       area: normalizeArea(nearest.area),
+      interaction_visibility: interactionVisibility,
     },
+    interaction_visibility: interactionVisibility,
   });
 
   return jsonResponse({
