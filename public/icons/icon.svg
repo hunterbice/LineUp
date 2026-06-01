@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="LineUp">
+  <rect width="512" height="512" rx="112" fill="#080807"/>
+  <path d="M256 92 412 376H100L256 92Z" fill="#ff3b5c"/>
+  <path d="M256 164 348 336H164L256 164Z" fill="#f3f1ec"/>
+  <path d="M256 224 304 312H208L256 224Z" fill="#080807"/>
+</svg>

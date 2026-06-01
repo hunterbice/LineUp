@@ -53,27 +53,33 @@ Live at: [get-lineup.app](https://get-lineup.app)
 ## Run Locally
 
 ```bash
-python3 -m http.server 4173
+npm install
+npm run dev
 ```
 
 Then open:
 
 ```
-http://127.0.0.1:4173/
+http://127.0.0.1:4179/
 ```
 
-Or use the Claude Code launch config (`.claude/launch.json`) which runs `npx serve .` on port 4173.
+The app must run through Vite for development because the browser bundle imports
+Supabase, Mapbox, and other dependencies from `node_modules`.
 
 ---
 
 ## Hosting
 
 The app is hosted on GitHub Pages with a custom domain via `CNAME`.
+Production deploys must publish the Vite build output from `dist/`, not the repo
+root. The GitHub Actions workflow in `.github/workflows/deploy-pages.yml` runs
+`npm ci`, `npm run build`, and uploads `dist/` as the Pages artifact.
 
-**Manual deploy:**
+**Deploy:**
 1. Push to `main` on GitHub
-2. Pages auto-deploys from the repo root
-3. Custom domain is set in `CNAME` → `get-lineup.app`
+2. GitHub Actions builds and deploys `dist/`
+3. GitHub Pages should be configured to use **GitHub Actions** as the source
+4. Custom domain is preserved by `public/CNAME` → `get-lineup.app`
 
 ---
 
@@ -126,9 +132,19 @@ Current backend tables:
 | `app_signal_events` | First-party intent telemetry such as detail views, directions taps, favorites, LineLeap taps, and report opens |
 | `ground_truth_observations` | Manual calibration observations from launch-night headcounts, lines, photos, and notes |
 | `venue_admins` | Future Supabase Auth permissions for owners and venue staff |
-| `reward_events` | Future server-backed rewards ledger |
+| `reward_events` | Server-backed rewards ledger (points earned per device/user) |
+| `reward_redemptions` | Redeemed rewards (e.g. line-skip) with status and redemption code |
+| `venue_checkins` | Verified/unverified proximity check-ins used as confidence signals |
+| `venue_staff_codes` | Per-venue numeric staff access codes (expiring) for the staff console |
+| `owner_audit_logs` | Audit trail of owner/staff actions and auth failures |
+| `presence_snapshots` | Rounded location presence pings for live activity and verification |
+| `user_profiles` | Profile rows for authenticated (including anonymous) users |
+| `user_devices` | Device-to-user mapping for claiming anonymous device data |
+| `user_favorites` | Server-side favorites synced across a user's devices |
 
-The app now reads from the `active_venue_status` view when Supabase is available and falls back to local prototype data if it is offline. User reports update the UI immediately and also insert into Supabase in the background.
+> Reconciliation note (2026-05-28): the rows from `reward_redemptions` down were added by matching table names referenced in the Edge Functions and client code. The four model/config tables above (`confidence_sources`, `reporter_reliability`, `venue_hourly_priors`, `ground_truth_observations`) are documented but not referenced by app/function code — confirm exact columns and which tables exist against the live schema.
+
+The app now reads from the `active_venue_status` view when Supabase is available and falls back to bundled venue data if it is offline. User reports update the UI immediately and also insert into Supabase in the background.
 
 Confidence is no longer just a static label. The backend computes a signal score from source quality, reliability, and freshness. High-trust inputs such as owner/venue updates and verified scouts carry more weight, while historical baseline and app interest help fill gaps without pretending to be live proof. User reports automatically create confidence signals, and every signal fades over time so stale reads lose influence as the night changes.
 
@@ -154,15 +170,66 @@ Scoring engine:
 - `preview_venue_live_score(venue_id, as_of)` computes a live crowd score, wait estimate, confidence score, momentum, and source labels without mutating state.
 - `recompute_venue_live_status(venue_id, as_of)` writes the computed result into `live_status`.
 - `recompute_all_live_status(as_of)` refreshes every active venue.
+- `get_device_profile_summary(target_device_id)` returns a privacy-safe device profile summary used by the profile screen (called by the `device-profile-summary` function).
 - New confidence signals and app intent events trigger recomputation for their venue.
 - Confidence is intentionally stricter than crowd scoring: baseline priors can move the displayed estimate, but they do not count as fresh live inputs.
 
 Real source ingestion:
 
-- `venue-status-ingest` is a Supabase Edge Function that lets the current staff/owner flow submit venue updates into `venue_confidence_signals`. This is a temporary bridge for the existing `2244` / `4444` prototype access codes; production should replace it with Supabase Auth venue roles.
-- `besttime-prior-import` is a Supabase Edge Function scaffold for importing BestTime forecast curves into `venue_hourly_priors`. It requires a `BESTTIME_PUBLIC_KEY` Supabase secret and mapped `besttime_venue_id` values in `besttime_venue_map`.
+- `venue-status-ingest` is a Supabase Edge Function that lets approved staff accounts, venue-specific staff codes, or owner emergency access submit venue updates into `venue_confidence_signals`.
+- `validate-staff-code` is the clean staff-password check used before opening the venue console. It validates the server-side owner/staff secrets or a row in `venue_staff_codes` without creating a venue confidence signal.
+- `owner-actions` is the protected owner command surface for live venue overrides, venue status changes, staff-code creation, redemption review, and per-venue owner detail views. It accepts either the server-side emergency code or a Supabase Auth user with `role='owner'` in `venue_admins`.
+- `device-session` issues a signed server token for the current device/session. Report, check-in, rewards, and account-claim functions require this token before trusting a `device_id`.
+- `besttime-prior-import` is a Supabase Edge Function scaffold for importing BestTime forecast curves into `venue_hourly_priors`. It requires a `BESTTIME_PUBLIC_KEY` Supabase secret and mapped `besttime_venue_id` values in `besttime_venue_map`. (Note: this function's source is not yet present in this repo — it is planned/external. Add it under `supabase/functions/besttime-prior-import/` before relying on it.)
 - BestTime should stay a forecast/prior source until Tucson live coverage is validated against manual ground truth.
 - The app now syncs in-app staff updates to Supabase, where they are treated as high-trust venue/admin signals and recompute the live score.
+
+Deployable local function source lives in:
+
+| Function | Path |
+|---|---|
+| `validate-staff-code` | `supabase/functions/validate-staff-code/index.ts` |
+| `device-session` | `supabase/functions/device-session/index.ts` |
+| `owner-actions` | `supabase/functions/owner-actions/index.ts` |
+| `owner-dashboard` | `supabase/functions/owner-dashboard/index.ts` |
+| `venue-status-ingest` | `supabase/functions/venue-status-ingest/index.ts` |
+| `account-sync` | `supabase/functions/account-sync/index.ts` |
+| `location-ingest` | `supabase/functions/location-ingest/index.ts` |
+| `app-event-ingest` | `supabase/functions/app-event-ingest/index.ts` |
+| `reward-ledger` | `supabase/functions/reward-ledger/index.ts` |
+| `device-profile-summary` | `supabase/functions/device-profile-summary/index.ts` |
+| Shared CORS helpers | `supabase/functions/_shared/cors.ts` |
+| Shared security/rate-limit helpers | `supabase/functions/_shared/security.ts` |
+
+When the Supabase CLI or MCP is available:
+
+```bash
+supabase functions deploy validate-staff-code --project-ref bxngqqsxthybjikmwvqj
+supabase functions deploy device-session --project-ref bxngqqsxthybjikmwvqj
+supabase functions deploy owner-actions --project-ref bxngqqsxthybjikmwvqj
+supabase functions deploy owner-dashboard --project-ref bxngqqsxthybjikmwvqj
+supabase functions deploy venue-status-ingest --project-ref bxngqqsxthybjikmwvqj
+supabase functions deploy account-sync --project-ref bxngqqsxthybjikmwvqj
+supabase functions deploy location-ingest --project-ref bxngqqsxthybjikmwvqj
+supabase functions deploy app-event-ingest --project-ref bxngqqsxthybjikmwvqj
+supabase functions deploy reward-ledger --project-ref bxngqqsxthybjikmwvqj
+supabase functions deploy device-profile-summary --project-ref bxngqqsxthybjikmwvqj
+supabase secrets set LINEUP_OWNER_CODE=<rotating-owner-code> LINEUP_STAFF_CODE_PEPPER=<random-staff-code-pepper> LINEUP_DEVICE_TOKEN_SECRET=<random-device-token-secret> --project-ref bxngqqsxthybjikmwvqj
+```
+
+Deployment status:
+
+- `device-session` source present in repo; deploy before enforcing signed device trust in production.
+- `validate-staff-code` deployed to Supabase on May 27, 2026.
+- `owner-actions` deployed to Supabase on May 27, 2026.
+- `owner-dashboard` source present in repo; confirm whether it is deployed.
+- `venue-status-ingest` deployed to Supabase on May 27, 2026.
+- `account-sync` deployed to Supabase on May 27, 2026.
+- `location-ingest` deployed to Supabase on May 27, 2026.
+- `app-event-ingest` deployed to Supabase on May 27, 2026.
+- `reward-ledger` deployed to Supabase on May 27, 2026.
+- `device-profile-summary` deployed to Supabase on May 27, 2026.
+- `LINEUP_OWNER_CODE` and `LINEUP_STAFF_CODE_PEPPER` are set as Supabase function secrets.
 
 Security status:
 
@@ -170,7 +237,8 @@ Security status:
 - Venue/live status is publicly readable.
 - Public users can submit reports.
 - Staff/owner updates require future authenticated Supabase users.
-- The in-app `2244` / `4444` admin flow is still prototype-only and should be replaced by Supabase Auth before launch.
+- Venue admin access is now venue-specific: staff accounts come from `venue_admins`, and fallback staff codes are stored as per-venue hashes with expirations.
+- Owner dashboard/detail responses are data-minimized: no raw user IDs, device IDs, exact GPS trails, broad row metadata, or full stored staff codes are returned to the browser.
 
 ---
 

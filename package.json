@@ -1,0 +1,22 @@
+{
+  "name": "lineup",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "smoke:pwa": "node scripts/pwa-smoke.mjs",
+    "smoke:app": "node scripts/app-smoke.mjs",
+    "test": "npm run smoke:pwa && npm run build && npm run smoke:app"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.106.2",
+    "mapbox-gl": "^3.24.0",
+    "vite": "^8.0.14"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.60.0"
+  }
+}

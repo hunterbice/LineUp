@@ -1,0 +1,91 @@
+import { spawn } from "node:child_process";
+import { chromium } from "@playwright/test";
+
+const port = process.env.LINEUP_SMOKE_PORT || "4190";
+const baseUrl = `http://127.0.0.1:${port}/index.html`;
+
+const server = spawn("npm", ["run", "dev", "--", "--port", port], {
+  stdio: ["ignore", "pipe", "pipe"],
+  env: { ...process.env, BROWSER: "none" },
+});
+
+let output = "";
+server.stdout.on("data", (chunk) => { output += chunk.toString(); });
+server.stderr.on("data", (chunk) => { output += chunk.toString(); });
+
+function waitForServer() {
+  return new Promise((resolve, reject) => {
+    const started = Date.now();
+    const timer = setInterval(async () => {
+      if (/Local:\s+http:\/\/127\.0\.0\.1/.test(output)) {
+        clearInterval(timer);
+        resolve();
+        return;
+      }
+      try {
+        const response = await fetch(baseUrl, { cache: "no-store" });
+        if (response.ok) {
+          clearInterval(timer);
+          resolve();
+        }
+      } catch {
+        if (Date.now() - started > 20000) {
+          clearInterval(timer);
+          reject(new Error(`Vite server did not start.\n${output}`));
+        }
+      }
+    }, 250);
+  });
+}
+
+async function main() {
+  let browser;
+  await waitForServer();
+  try {
+    browser = await chromium.launch();
+    const page = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true });
+    const errors = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    page.on("console", (message) => {
+      if (message.type() !== "error") return;
+      const text = message.text();
+      if (/Failed to load resource: the server responded with a status of 401/.test(text)) return;
+      errors.push(text);
+    });
+
+    await page.goto(baseUrl, { waitUntil: "networkidle" });
+    await page.waitForSelector("#livePage.active");
+    await page.locator(".barcard").first().click();
+    await page.waitForSelector("#detail.open");
+    await page.locator("button[onclick='closeDetail()']").click();
+    await page.waitForSelector("#detail:not(.open)");
+
+    await page.locator(".navbtn[data-page='mapPage']").click();
+    await page.waitForSelector("#mapPage.active");
+    await page.locator(".navbtn[data-page='highlightsPage']").click();
+    await page.waitForSelector("#highlightsPage.active");
+    await page.locator(".vibeBtn").nth(1).click();
+    await page.waitForSelector(".vibeBtn.on");
+    await page.locator(".navbtn[data-page='profilePage']").click();
+    await page.waitForSelector("#profilePage.active");
+    await page.locator(".profileMark").click({ clickCount: 5 });
+    await page.waitForSelector("#reportSheet.open");
+    await page.locator("#ownerPassword").fill("0000");
+    await page.locator("#ownerPassword").press("Enter");
+    await page.waitForSelector("#ownerError.on");
+
+    if (errors.length) throw new Error(`Browser errors:\n${errors.join("\n")}`);
+    console.log("App smoke checks passed");
+  } finally {
+    await browser?.close().catch(() => {});
+  }
+}
+
+main()
+  .catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  })
+  .finally(() => {
+    server.kill("SIGTERM");
+  });

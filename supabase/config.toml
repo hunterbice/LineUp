@@ -1,0 +1,31 @@
+project_id = "bxngqqsxthybjikmwvqj"
+
+[functions.validate-staff-code]
+verify_jwt = false
+
+[functions.owner-actions]
+verify_jwt = false
+
+[functions.owner-dashboard]
+verify_jwt = false
+
+[functions.location-ingest]
+verify_jwt = false
+
+[functions.app-event-ingest]
+verify_jwt = false
+
+[functions.reward-ledger]
+verify_jwt = false
+
+[functions.device-profile-summary]
+verify_jwt = false
+
+[functions.venue-status-ingest]
+verify_jwt = false
+
+[functions.account-sync]
+verify_jwt = false
+
+[analytics]
+enabled = false
