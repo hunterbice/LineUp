@@ -93,11 +93,11 @@ async function main() {
     await page.waitForSelector(".vibeBtn.on");
     await page.locator(".navbtn[data-page='profilePage']").click();
     await page.waitForSelector("#profilePage.active");
+    const roleTabs = await page.locator("#roleNavButton").count();
+    if (roleTabs !== 0) throw new Error("Normal account should not receive owner or venue controls");
     await page.locator(".profileMark").click({ clickCount: 5 });
-    await page.waitForSelector("#reportSheet.open");
-    await page.locator("#ownerPassword").fill("0000");
-    await page.locator("#ownerPassword").press("Enter");
-    await page.waitForSelector("#ownerError.on");
+    const hiddenSheetOpened = await page.locator("#reportSheet.open").count();
+    if (hiddenSheetOpened) throw new Error("Profile avatar should not open hidden owner access");
 
     if (errors.length) throw new Error(`Browser errors:\n${errors.join("\n")}`);
     console.log("App smoke checks passed");

@@ -1,23 +1,13 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { corsResponse, isAllowedOrigin, jsonResponse } from "../_shared/cors.ts";
-import { actorDevice, actorKeys, isRateLimitedAny, logSecurityEventForActors, staffCodeHash, staffCodePreview } from "../_shared/security.ts";
+import { actorDevice, actorKeys, isRateLimitedAny, logSecurityEventForActors } from "../_shared/security.ts";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
 const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-const ownerCode = Deno.env.get("LINEUP_OWNER_CODE") ?? "";
 
 const admin = createClient(supabaseUrl, serviceKey, {
   auth: { persistSession: false },
 });
-
-function randomStaffCode() {
-  return String(Math.floor(100000 + Math.random() * 900000));
-}
-function staffCodeExpiry(days: unknown) {
-  const parsed = Number.parseInt(String(days ?? "14"), 10);
-  const safeDays = Number.isFinite(parsed) ? Math.max(1, Math.min(90, parsed)) : 14;
-  return new Date(Date.now() + safeDays * 24 * 60 * 60 * 1000).toISOString();
-}
 
 async function userFromRequest(req: Request) {
   const auth = req.headers.get("Authorization") ?? "";
@@ -28,15 +18,14 @@ async function userFromRequest(req: Request) {
   return data.user;
 }
 
-async function hasOwnerAccess(req: Request, code: string) {
-  if (ownerCode && code && code === ownerCode) return { ok: true, mode: "emergency_code", userId: null };
+async function hasOwnerAccess(req: Request) {
   const user = await userFromRequest(req);
   if (!user) return { ok: false, mode: "none", userId: null };
   const { data, error } = await admin
     .from("venue_admins")
     .select("id")
     .eq("user_id", user.id)
-    .eq("role", "owner")
+    .in("role", ["owner", "admin"])
     .maybeSingle();
   if (error) throw error;
   return { ok: !!data, mode: data ? "owner_account" : "none", userId: user.id };
@@ -92,7 +81,7 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "Too many attempts. Try again later." }, 429, req);
     }
 
-    const access = await hasOwnerAccess(req, String(body.code ?? "").trim());
+    const access = await hasOwnerAccess(req);
     if (!access.ok) {
       await logSecurityEventForActors(admin, "owner_auth_failed", actors, body, { action, origin });
       return jsonResponse({ error: "Owner access required" }, 401, req);
@@ -154,50 +143,9 @@ Deno.serve(async (req) => {
       return jsonResponse({ ok: true }, 200, req);
     }
 
-    if (action === "create_staff_code") {
-      const venueId = String(body.venue_id ?? "").trim();
-      const staffCode = String(body.staff_code ?? randomStaffCode()).trim();
-      if (!venueId) return jsonResponse({ error: "Missing venue" }, 400, req);
-      if (!/^[0-9]{4,8}$/.test(staffCode)) {
-        return jsonResponse({ error: "Use a numeric 4-8 digit code" }, 400, req);
-      }
-      const { data: venue, error: venueError } = await admin
-        .from("venues")
-        .select("id,status,deprecated")
-        .eq("id", venueId)
-        .maybeSingle();
-      if (venueError) throw venueError;
-      if (!venue || venue.status !== "active" || venue.deprecated) {
-        return jsonResponse({ error: "Staff codes can only be created for active venues" }, 400, req);
-      }
-      const row = {
-        venue_id: venueId,
-        code_hash: await staffCodeHash(staffCode, venueId),
-        code_last4: staffCodePreview(staffCode),
-        label: String(body.label ?? "Venue staff").trim(),
-        active: true,
-        expires_at: staffCodeExpiry(body.expires_days),
-      };
-      const { data, error } = await admin
-        .from("venue_staff_codes")
-        .insert(row)
-        .select("id,venue_id,code_last4,label,active,created_at,expires_at")
-        .single();
-      if (error) throw error;
-      await audit(action, access, { ...body, staff_code: "[redacted]" });
-      return jsonResponse({ ok: true, staff_code: { ...data, code: staffCode } }, 200, req);
-    }
-
-    if (action === "toggle_staff_code") {
-      const id = String(body.staff_code_id ?? "").trim();
-      if (!id) return jsonResponse({ error: "Missing staff code" }, 400, req);
-      const { error } = await admin
-        .from("venue_staff_codes")
-        .update({ active: !!body.active })
-        .eq("id", id);
-      if (error) throw error;
+    if (action === "create_staff_code" || action === "toggle_staff_code") {
       await audit(action, access, body);
-      return jsonResponse({ ok: true }, 200, req);
+      return jsonResponse({ error: "Staff codes are retired. Assign venue roles to authenticated accounts instead." }, 410, req);
     }
 
     if (action === "redemption_status") {

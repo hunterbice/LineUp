@@ -97,15 +97,6 @@ export async function verifyDeviceToken(body: Record<string, unknown>) {
   return { ok: true, payload };
 }
 
-export async function staffCodeHash(code: string, venueId: string) {
-  const pepper = Deno.env.get("LINEUP_STAFF_CODE_PEPPER") || "";
-  return `sha256:${await sha256Hex(`${pepper}:${venueId}:${code}`)}`;
-}
-
-export function staffCodePreview(code: string) {
-  return code ? code.slice(-4) : "";
-}
-
 export async function logSecurityEvent(
   admin: SupabaseClient,
   action: string,

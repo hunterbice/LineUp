@@ -1,7 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsResponse, isAllowedOrigin, jsonResponse } from "../_shared/cors.ts";
-import { actorDevice, actorKeys, isRateLimitedAny, logSecurityEventForActors, staffCodeHash } from "../_shared/security.ts";
+import { actorDevice, actorKeys, isRateLimitedAny, logSecurityEventForActors } from "../_shared/security.ts";
 const crowdLevels = new Set(["dead", "slow", "busy", "packed"]);
 
 function clean(value: unknown) { return typeof value === "string" ? value.trim() : ""; }
@@ -29,11 +29,11 @@ async function accountAccess(req: Request, supabase: ReturnType<typeof createCli
     .from("venue_admins")
     .select("id,venue_id,role")
     .eq("user_id", user.id)
-    .in("role", ["owner", "venue_staff", "staff", "manager"])
+    .in("role", ["owner", "admin", "venue_owner", "venue_staff", "venue_admin"])
     .limit(20);
   if (error) throw error;
   const rows = data || [];
-  const owner = rows.find((row: any) => row.role === "owner");
+  const owner = rows.find((row: any) => row.role === "owner" || row.role === "admin");
   if (owner) return { sourceType: "owner_override", mode: "owner_account", userId: user.id };
   const staff = rows.find((row: any) => row.venue_id === venueId);
   if (staff) return { sourceType: "venue_admin", mode: "staff_account", userId: user.id };
@@ -49,13 +49,11 @@ Deno.serve(async (req: Request) => {
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!supabaseUrl || !serviceRoleKey) return jsonResponse({ error: "Server is missing Supabase configuration" }, 500, req);
 
-  const ownerCode = Deno.env.get("LINEUP_OWNER_CODE") || "";
   const supabase = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
 
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch (_error) { return jsonResponse({ error: "Invalid JSON body" }, 400, req); }
 
-  const code = clean(body.code);
   const venueId = clean(body.venue_id);
   const crowdLevel = clean(body.crowd_level);
   const deviceId = clean(body.device_id) || null;
@@ -70,32 +68,14 @@ Deno.serve(async (req: Request) => {
   if (!crowdLevels.has(crowdLevel)) return jsonResponse({ error: "Invalid crowd_level" }, 400, req);
 
   let sourceType = "venue_admin";
-  let authMode = "code";
-  if (ownerCode && code === ownerCode) {
-    sourceType = "owner_override";
-    authMode = "emergency_code";
+  let authMode = "account";
+  const account = await accountAccess(req, supabase, venueId);
+  if (account) {
+    sourceType = account.sourceType;
+    authMode = account.mode;
   } else {
-    const account = await accountAccess(req, supabase, venueId);
-    if (account) {
-      sourceType = account.sourceType;
-      authMode = account.mode;
-    } else {
-      const { data: staff, error: staffError } = await supabase
-        .from("venue_staff_codes")
-        .select("id,venue_id,label,active,expires_at")
-        .eq("venue_id", venueId)
-        .eq("code_hash", await staffCodeHash(code, venueId))
-        .eq("active", true)
-        .maybeSingle();
-      if (staffError) return jsonResponse({ error: staffError.message }, 500, req);
-      const expired = staff?.expires_at && new Date(staff.expires_at).getTime() < Date.now();
-      if (!staff || expired || staff.venue_id !== venueId) {
-        await logSecurityEventForActors(supabase, "staff_update_auth_failed", actors, body, { origin, reason: "invalid_code" });
-        return jsonResponse({ error: "Invalid venue code" }, 401, req);
-      }
-      sourceType = "venue_admin";
-      authMode = "staff_code";
-    }
+    await logSecurityEventForActors(supabase, "staff_update_auth_failed", actors, body, { origin, reason: "no_account_role" });
+    return jsonResponse({ error: "Venue account access required" }, 401, req);
   }
 
   const waitMinutes = clampInt(body.wait_minutes, 0, 180, 0);

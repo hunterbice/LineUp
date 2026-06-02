@@ -52,6 +52,30 @@ async function upsertFavorites(supabase: ReturnType<typeof createClient>, userId
   const { error } = await supabase.from("user_favorites").upsert(rows, { onConflict: "user_id,venue_id", ignoreDuplicates: true });
   if (error) throw error;
 }
+async function getPermissions(supabase: ReturnType<typeof createClient>, userId: string) {
+  const { data: grants, error } = await supabase
+    .from("venue_admins")
+    .select("role,venue_id")
+    .eq("user_id", userId);
+  if (error) throw error;
+  const rows = grants || [];
+  const isOwner = rows.some((row: any) => row.role === "owner" || row.role === "admin");
+  const venueIds = Array.from(new Set(rows.map((row: any) => row.venue_id).filter(Boolean)));
+  let venues: any[] = [];
+  if (venueIds.length) {
+    const { data: venueRows, error: venueError } = await supabase
+      .from("venues")
+      .select("id,name,logo_key,address,status,deprecated")
+      .in("id", venueIds);
+    if (venueError) throw venueError;
+    venues = (venueRows || []).filter((venue: any) => venue.status === "active" && !venue.deprecated);
+  }
+  return {
+    owner: isOwner,
+    roles: rows.map((row: any) => ({ role: row.role, venue_id: row.venue_id })),
+    venues: venues.map((venue: any) => ({ id: venue.id, name: venue.name, logo_key: venue.logo_key, address: venue.address })),
+  };
+}
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return corsResponse(req);
@@ -126,11 +150,13 @@ Deno.serve(async (req: Request) => {
       await claimDeviceData(supabase, user.id, deviceId);
       await upsertFavorites(supabase, user.id, cleanVenueList(body.favorites));
       const favorites = await getFavorites(supabase, user.id);
-      return jsonResponse({ ok: true, user: { id: user.id, is_anonymous: Boolean(user.is_anonymous), email: user.email || "" }, preferences: profile, favorites }, 200, req);
+      const permissions = await getPermissions(supabase, user.id);
+      return jsonResponse({ ok: true, user: { id: user.id, is_anonymous: Boolean(user.is_anonymous), email: user.email || "" }, preferences: profile, favorites, permissions }, 200, req);
     }
 
     if (action === "update_profile") {
-      return jsonResponse({ ok: true, user: { id: user.id, is_anonymous: Boolean(user.is_anonymous), email: user.email || "" }, preferences: profile }, 200, req);
+      const permissions = await getPermissions(supabase, user.id);
+      return jsonResponse({ ok: true, user: { id: user.id, is_anonymous: Boolean(user.is_anonymous), email: user.email || "" }, preferences: profile, permissions }, 200, req);
     }
 
     if (action === "set_favorite") {
@@ -144,7 +170,8 @@ Deno.serve(async (req: Request) => {
         if (error) throw error;
       }
       const favorites = await getFavorites(supabase, user.id);
-      return jsonResponse({ ok: true, user: { id: user.id, is_anonymous: Boolean(user.is_anonymous), email: user.email || "" }, preferences: profile, favorites }, 200, req);
+      const permissions = await getPermissions(supabase, user.id);
+      return jsonResponse({ ok: true, user: { id: user.id, is_anonymous: Boolean(user.is_anonymous), email: user.email || "" }, preferences: profile, favorites, permissions }, 200, req);
     }
 
     return jsonResponse({ error: "Unknown action" }, 400, req);
