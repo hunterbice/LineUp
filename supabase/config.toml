@@ -21,6 +21,9 @@ verify_jwt = false
 [functions.app-event-ingest]
 verify_jwt = false
 
+[functions.reports-feed]
+verify_jwt = false
+
 [functions.reward-ledger]
 verify_jwt = false
 

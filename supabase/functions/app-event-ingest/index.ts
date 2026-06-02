@@ -71,6 +71,8 @@ Deno.serve(async (req: Request) => {
   const sessionId = clean(body.session_id, 128);
   const interactionVisibility = cleanVisibility(body.interaction_visibility);
   const displayName = clean(body.display_name, 32);
+  const avatarUrl = clean(body.avatar_url, 250000);
+  const safeAvatarUrl = avatarUrl.startsWith("data:image/") ? avatarUrl : "";
   if (!venueId || !eventType || !deviceId) {
     return jsonResponse({ error: "venue_id, event_type, and device_id are required" }, 400, req);
   }
@@ -112,7 +114,7 @@ Deno.serve(async (req: Request) => {
       device_id: deviceId,
       session_id: sessionId || null,
       interaction_visibility: interactionVisibility,
-      metadata: { ...safeMetadata(body.metadata), interaction_visibility: interactionVisibility, display_name: displayName },
+      metadata: { ...safeMetadata(body.metadata), interaction_visibility: interactionVisibility, display_name: displayName, avatar_url: safeAvatarUrl },
     })
     .select("id,created_at")
     .single();

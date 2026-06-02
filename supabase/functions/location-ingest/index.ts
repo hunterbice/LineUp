@@ -117,6 +117,8 @@ Deno.serve(async (req: Request) => {
   if (!user) return jsonResponse({ error: "LineUp account required" }, 401, req);
   const interactionVisibility = cleanVisibility(body.interaction_visibility);
   const displayName = typeof body.display_name === "string" ? body.display_name.slice(0, 32) : "";
+  const avatarUrl = typeof body.avatar_url === "string" ? body.avatar_url.slice(0, 250000) : "";
+  const safeAvatarUrl = avatarUrl.startsWith("data:image/") ? avatarUrl : "";
 
   if (action === "report" && await tooManyRecentRows(supabase, "reports", deviceId, 6, 15)) {
     return jsonResponse({ error: "Too many reports. Try again later." }, 429, req);
@@ -186,7 +188,7 @@ Deno.serve(async (req: Request) => {
       accuracy_m: Math.round(accuracyM * 100) / 100,
       verified: targetVerified,
       interaction_visibility: interactionVisibility,
-      metadata: { nearest_venue_id: nearest.id, nearest_distance_m: Math.round(nearest.distance_m * 100) / 100, interaction_visibility: interactionVisibility, display_name: displayName },
+      metadata: { nearest_venue_id: nearest.id, nearest_distance_m: Math.round(nearest.distance_m * 100) / 100, interaction_visibility: interactionVisibility, display_name: displayName, avatar_url: safeAvatarUrl },
     }).select("id,verified,distance_m,accuracy_m,created_at").single();
 
     if (checkinError) return jsonResponse({ error: checkinError.message }, 500, req);
@@ -256,6 +258,7 @@ Deno.serve(async (req: Request) => {
         submitted_via: "location-ingest",
         interaction_visibility: interactionVisibility,
         display_name: displayName,
+        avatar_url: safeAvatarUrl,
         accuracy_m: Math.round(accuracyM),
         nearest_venue_id: nearest.id,
         nearest_distance_m: Math.round(nearest.distance_m),
@@ -307,6 +310,7 @@ Deno.serve(async (req: Request) => {
         report_id: report.id,
         interaction_visibility: interactionVisibility,
         display_name: displayName,
+        avatar_url: safeAvatarUrl,
         distance_m: Math.round(target.distance_m),
         accuracy_m: Math.round(accuracyM),
         location_verified: targetVerified,
