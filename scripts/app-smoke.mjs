@@ -55,7 +55,14 @@ async function main() {
 
     await page.goto(baseUrl, { waitUntil: "networkidle" });
     await page.waitForSelector(".accountGate");
-    await page.locator(".accountGate button", { hasText: "Create LineUp Account" }).click();
+    const stamp = `${Date.now()}${Math.round(Math.random() * 10000)}`;
+    await page.locator("#authEmail").fill(`smoke-${stamp}@get-lineup.app`);
+    await page.locator("#authPassword").fill("lineup-smoke-1");
+    await page.locator("#authName").fill("Smoke Test");
+    await page.locator(".accountGate button", { hasText: "Create Account" }).click();
+    await page.waitForSelector(".setupGate");
+    await page.locator("#setupName").fill("Smoke Test");
+    await page.locator(".setupGate button", { hasText: "Finish Setup" }).click();
     await page.waitForSelector("#livePage.active");
     await page.locator(".barcard").first().click();
     await page.waitForSelector("#detail.open");

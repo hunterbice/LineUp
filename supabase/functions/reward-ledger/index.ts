@@ -79,6 +79,7 @@ Deno.serve(async (req: Request) => {
   if (!verifiedDevice.ok) return jsonResponse({ error: verifiedDevice.error }, 401, req);
   const supabase = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
   const userId = await getUserId(req, supabase);
+  if (!userId) return jsonResponse({ error: "LineUp account required" }, 401, req);
   try {
     if (action === "summary") return jsonResponse({ ok: true, summary: await buildSummary(supabase, deviceId, userId) }, 200, req);
     if (action === "award") {

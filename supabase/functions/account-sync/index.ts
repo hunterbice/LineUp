@@ -8,12 +8,24 @@ function cleanVenueList(value: unknown) {
   return Array.isArray(value) ? Array.from(new Set(value.map((item) => cleanText(item, 64)).filter(Boolean))).slice(0, 50) : [];
 }
 function cleanPrefs(value: unknown) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return { interaction_visibility: null, display_name: null };
+  if (!value || typeof value !== "object" || Array.isArray(value)) return { interaction_visibility: null, display_name: null, avatar_url: null, profile_setup_completed: null, notification_pref: null, location_pref: null, terms_accepted: null, data_policy_seen: null };
   const prefs = value as Record<string, unknown>;
   const rawVisibility = cleanText(prefs.interaction_visibility, 24);
   const visibility = rawVisibility === "public" || rawVisibility === "anonymous" ? rawVisibility : null;
   const displayName = cleanText(prefs.display_name, 32);
-  return { interaction_visibility: visibility, display_name: displayName || null };
+  const avatar = cleanText(prefs.avatar_url, 250000);
+  const notification = cleanText(prefs.notification_pref, 24);
+  const location = cleanText(prefs.location_pref, 24);
+  return {
+    interaction_visibility: visibility,
+    display_name: displayName || null,
+    avatar_url: avatar && avatar.startsWith("data:image/") ? avatar : null,
+    profile_setup_completed: typeof prefs.profile_setup_completed === "boolean" ? prefs.profile_setup_completed : null,
+    notification_pref: ["unset", "enabled", "disabled", "denied"].includes(notification) ? notification : null,
+    location_pref: ["unset", "enabled", "disabled", "denied"].includes(location) ? location : null,
+    terms_accepted: prefs.terms_accepted === true ? true : null,
+    data_policy_seen: prefs.data_policy_seen === true ? true : null,
+  };
 }
 async function getUser(req: Request, supabase: ReturnType<typeof createClient>) {
   const auth = req.headers.get("Authorization") || "";
@@ -67,19 +79,41 @@ Deno.serve(async (req: Request) => {
     const prefs = cleanPrefs(body.preferences);
     const { data: existingProfile } = await supabase
       .from("user_profiles")
-      .select("display_name,interaction_visibility")
+      .select("display_name,interaction_visibility,avatar_url,profile_setup_completed,notification_pref,location_pref,terms_accepted_at,data_policy_seen_at")
       .eq("user_id", user.id)
       .maybeSingle();
     const fallbackDisplayName = cleanText(user.user_metadata?.full_name, 80) || null;
     const nextDisplayName = prefs.display_name ?? existingProfile?.display_name ?? fallbackDisplayName;
     const nextVisibility = prefs.interaction_visibility || existingProfile?.interaction_visibility || "anonymous";
+    const nextAvatar = prefs.avatar_url ?? existingProfile?.avatar_url ?? null;
+    const nextSetup = prefs.profile_setup_completed ?? Boolean(existingProfile?.profile_setup_completed);
+    const nextNotification = prefs.notification_pref || existingProfile?.notification_pref || "unset";
+    const nextLocation = prefs.location_pref || existingProfile?.location_pref || "unset";
+    const now = new Date().toISOString();
 
     await supabase.from("user_profiles").upsert({
       user_id: user.id,
       display_name: nextDisplayName,
       interaction_visibility: nextVisibility,
-      updated_at: new Date().toISOString(),
+      avatar_url: nextAvatar,
+      profile_setup_completed: nextSetup,
+      notification_pref: nextNotification,
+      location_pref: nextLocation,
+      terms_accepted_at: existingProfile?.terms_accepted_at || (prefs.terms_accepted ? now : null),
+      data_policy_seen_at: existingProfile?.data_policy_seen_at || (prefs.data_policy_seen ? now : null),
+      updated_at: now,
     }, { onConflict: "user_id" });
+
+    const profile = {
+      interaction_visibility: nextVisibility,
+      display_name: nextDisplayName || "",
+      avatar_url: nextAvatar || "",
+      profile_setup_completed: nextSetup,
+      notification_pref: nextNotification,
+      location_pref: nextLocation,
+      terms_accepted: Boolean(existingProfile?.terms_accepted_at || prefs.terms_accepted),
+      data_policy_seen: Boolean(existingProfile?.data_policy_seen_at || prefs.data_policy_seen),
+    };
 
     await supabase.from("user_devices").upsert({
       user_id: user.id,
@@ -92,11 +126,11 @@ Deno.serve(async (req: Request) => {
       await claimDeviceData(supabase, user.id, deviceId);
       await upsertFavorites(supabase, user.id, cleanVenueList(body.favorites));
       const favorites = await getFavorites(supabase, user.id);
-      return jsonResponse({ ok: true, user: { id: user.id, is_anonymous: Boolean(user.is_anonymous) }, preferences: { interaction_visibility: nextVisibility, display_name: nextDisplayName || "" }, favorites }, 200, req);
+      return jsonResponse({ ok: true, user: { id: user.id, is_anonymous: Boolean(user.is_anonymous), email: user.email || "" }, preferences: profile, favorites }, 200, req);
     }
 
     if (action === "update_profile") {
-      return jsonResponse({ ok: true, user: { id: user.id, is_anonymous: Boolean(user.is_anonymous) }, preferences: { interaction_visibility: nextVisibility, display_name: nextDisplayName || "" } }, 200, req);
+      return jsonResponse({ ok: true, user: { id: user.id, is_anonymous: Boolean(user.is_anonymous), email: user.email || "" }, preferences: profile }, 200, req);
     }
 
     if (action === "set_favorite") {
@@ -110,7 +144,7 @@ Deno.serve(async (req: Request) => {
         if (error) throw error;
       }
       const favorites = await getFavorites(supabase, user.id);
-      return jsonResponse({ ok: true, user: { id: user.id, is_anonymous: Boolean(user.is_anonymous) }, preferences: { interaction_visibility: nextVisibility, display_name: nextDisplayName || "" }, favorites }, 200, req);
+      return jsonResponse({ ok: true, user: { id: user.id, is_anonymous: Boolean(user.is_anonymous), email: user.email || "" }, preferences: profile, favorites }, 200, req);
     }
 
     return jsonResponse({ error: "Unknown action" }, 400, req);
