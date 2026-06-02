@@ -93,13 +93,6 @@ Deno.serve(async (req: Request) => {
     return jsonResponse({ error: "Invalid JSON body" }, 400, req);
   }
 
-  const lat = asNumber(body.lat);
-  const lng = asNumber(body.lng);
-  const accuracyM = Math.max(0, Math.min(5000, asNumber(body.accuracy_m) ?? 9999));
-  if (lat === null || lng === null || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-    return jsonResponse({ error: "Valid lat/lng are required" }, 400, req);
-  }
-
   const action = String(body.action || "presence");
   const deviceId = typeof body.device_id === "string" ? body.device_id.slice(0, 128) : null;
   const sessionId = typeof body.session_id === "string" ? body.session_id.slice(0, 128) : null;
@@ -120,6 +113,14 @@ Deno.serve(async (req: Request) => {
   const avatarUrl = typeof body.avatar_url === "string" ? body.avatar_url.slice(0, 250000) : "";
   const safeAvatarUrl = avatarUrl.startsWith("data:image/") ? avatarUrl : "";
 
+  const lat = asNumber(body.lat);
+  const lng = asNumber(body.lng);
+  const hasLocation = lat !== null && lng !== null && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+  const accuracyM = Math.max(0, Math.min(5000, asNumber(body.accuracy_m) ?? 9999));
+  if (!hasLocation && action !== "report") {
+    return jsonResponse({ error: "Valid lat/lng are required" }, 400, req);
+  }
+
   if (action === "report" && await tooManyRecentRows(supabase, "reports", deviceId, 6, 15)) {
     return jsonResponse({ error: "Too many reports. Try again later." }, 429, req);
   }
@@ -139,44 +140,50 @@ Deno.serve(async (req: Request) => {
   if (venuesError) return jsonResponse({ error: venuesError.message }, 500, req);
   if (!venues?.length) return jsonResponse({ error: "No active venues" }, 500, req);
 
-  const ranked = venues
+  const ranked = hasLocation ? venues
     .filter((v) => v.lat !== null && v.lng !== null)
     .map((v) => ({
       ...v,
-      distance_m: distanceMeters(lat, lng, Number(v.lat), Number(v.lng)),
+      distance_m: distanceMeters(lat as number, lng as number, Number(v.lat), Number(v.lng)),
     }))
-    .sort((a, b) => a.distance_m - b.distance_m);
+    .sort((a, b) => a.distance_m - b.distance_m) : [];
 
-  const nearest = ranked[0];
-  const target = requestedVenueId ? ranked.find((v) => v.id === requestedVenueId) : nearest;
+  const nearest = ranked[0] || null;
+  const target = requestedVenueId
+    ? (hasLocation ? ranked.find((v) => v.id === requestedVenueId) : venues.find((v) => v.id === requestedVenueId))
+    : nearest;
   if (!target) return jsonResponse({ error: "Unknown active venue" }, 404, req);
 
   const verificationRadius = 75;
   const usableAccuracy = accuracyM <= 100;
-  const targetVerified = usableAccuracy && target.distance_m <= Math.max(verificationRadius, accuracyM + 25);
-  const nearestVerified = usableAccuracy && nearest.distance_m <= Math.max(verificationRadius, accuracyM + 25);
+  const targetDistance = Number((target as any).distance_m ?? 999999);
+  const nearestDistance = Number((nearest as any)?.distance_m ?? 999999);
+  const targetVerified = hasLocation && usableAccuracy && targetDistance <= Math.max(verificationRadius, accuracyM + 25);
+  const nearestVerified = hasLocation && !!nearest && usableAccuracy && nearestDistance <= Math.max(verificationRadius, accuracyM + 25);
 
   const presenceSource = action === "check_in" ? "check_in" : action === "report" ? "report" : "foreground";
-  await supabase.from("presence_snapshots").insert({
-    user_id: user.id,
-    device_id: deviceId,
-    session_id: sessionId,
-    nearest_venue_id: nearest.id,
-    nearest_distance_m: Math.round(nearest.distance_m * 100) / 100,
-    accuracy_m: Math.round(accuracyM * 100) / 100,
-    area: normalizeArea(nearest.area),
-    source: presenceSource,
-    location_verified: nearestVerified,
-    lat_rounded: roundCoord(lat),
-    lng_rounded: roundCoord(lng),
-    metadata: {
-      action,
-      interaction_visibility: interactionVisibility,
-      requested_venue_id: requestedVenueId,
-      target_venue_id: target.id,
-      target_distance_m: Math.round(target.distance_m * 100) / 100,
-    },
-  });
+  if (hasLocation && nearest) {
+    await supabase.from("presence_snapshots").insert({
+      user_id: user.id,
+      device_id: deviceId,
+      session_id: sessionId,
+      nearest_venue_id: nearest.id,
+      nearest_distance_m: Math.round(nearestDistance * 100) / 100,
+      accuracy_m: Math.round(accuracyM * 100) / 100,
+      area: normalizeArea(nearest.area),
+      source: presenceSource,
+      location_verified: nearestVerified,
+      lat_rounded: roundCoord(lat as number),
+      lng_rounded: roundCoord(lng as number),
+      metadata: {
+        action,
+        interaction_visibility: interactionVisibility,
+        requested_venue_id: requestedVenueId,
+        target_venue_id: target.id,
+        target_distance_m: Math.round(targetDistance * 100) / 100,
+      },
+    });
+  }
 
   if (action === "check_in") {
     const { data: checkin, error: checkinError } = await supabase.from("venue_checkins").insert({
@@ -184,11 +191,11 @@ Deno.serve(async (req: Request) => {
       venue_id: target.id,
       device_id: deviceId,
       session_id: sessionId,
-      distance_m: Math.round(target.distance_m * 100) / 100,
+      distance_m: Math.round(targetDistance * 100) / 100,
       accuracy_m: Math.round(accuracyM * 100) / 100,
       verified: targetVerified,
       interaction_visibility: interactionVisibility,
-      metadata: { nearest_venue_id: nearest.id, nearest_distance_m: Math.round(nearest.distance_m * 100) / 100, interaction_visibility: interactionVisibility, display_name: displayName, avatar_url: safeAvatarUrl },
+      metadata: { nearest_venue_id: nearest?.id || null, nearest_distance_m: Math.round(nearestDistance * 100) / 100, interaction_visibility: interactionVisibility, display_name: displayName, avatar_url: safeAvatarUrl },
     }).select("id,verified,distance_m,accuracy_m,created_at").single();
 
     if (checkinError) return jsonResponse({ error: checkinError.message }, 500, req);
@@ -201,7 +208,7 @@ Deno.serve(async (req: Request) => {
         device_id: deviceId,
         session_id: sessionId,
         interaction_visibility: interactionVisibility,
-        metadata: { distance_m: Math.round(target.distance_m), accuracy_m: Math.round(accuracyM), interaction_visibility: interactionVisibility },
+        metadata: { distance_m: Math.round(targetDistance), accuracy_m: Math.round(accuracyM), interaction_visibility: interactionVisibility },
       });
       await supabase.from("venue_confidence_signals").insert({
         venue_id: target.id,
@@ -211,7 +218,7 @@ Deno.serve(async (req: Request) => {
         reliability: accuracyM <= 35 ? 0.78 : 0.68,
         observed_at: new Date().toISOString(),
         expires_at: new Date(Date.now() + 45 * 60 * 1000).toISOString(),
-        metadata: { checkin_id: checkin.id, distance_m: Math.round(target.distance_m), accuracy_m: Math.round(accuracyM) },
+        metadata: { checkin_id: checkin.id, distance_m: Math.round(targetDistance), accuracy_m: Math.round(accuracyM) },
         public_visible: true,
       });
       await recomputeVenue(supabase, target.id);
@@ -223,9 +230,9 @@ Deno.serve(async (req: Request) => {
       venue_id: target.id,
       venue_name: target.name,
       verified: targetVerified,
-      distance_m: Math.round(target.distance_m),
+      distance_m: Math.round(targetDistance),
       accuracy_m: Math.round(accuracyM),
-      nearest_venue_id: nearest.id,
+      nearest_venue_id: nearest?.id || null,
       checkin,
     }, 200, req);
   }
@@ -252,27 +259,28 @@ Deno.serve(async (req: Request) => {
       user_id: user.id,
       location_verified: targetVerified,
       interaction_visibility: interactionVisibility,
-      distance_m: Math.round(target.distance_m * 100) / 100,
+      distance_m: hasLocation ? Math.round(targetDistance * 100) / 100 : null,
       reporter_reliability_snapshot: null,
       report_context: {
         submitted_via: "location-ingest",
         interaction_visibility: interactionVisibility,
         display_name: displayName,
         avatar_url: safeAvatarUrl,
-        accuracy_m: Math.round(accuracyM),
-        nearest_venue_id: nearest.id,
-        nearest_distance_m: Math.round(nearest.distance_m),
+        accuracy_m: hasLocation ? Math.round(accuracyM) : null,
+        nearest_venue_id: nearest?.id || null,
+        nearest_distance_m: hasLocation ? Math.round(nearestDistance) : null,
         verification_radius_m: verificationRadius,
+        location_status: hasLocation ? "provided" : "unavailable",
       },
     }).select("id,venue_id,location_verified,distance_m,created_at").single();
 
     if (reportError) return jsonResponse({ error: reportError.message }, 500, req);
 
-    const nearEnoughForLive = usableAccuracy && target.distance_m <= 200;
-    const publicVisible = targetVerified || nearEnoughForLive;
+    const nearEnoughForLive = hasLocation && usableAccuracy && targetDistance <= 200;
+    const publicVisible = true;
     const signalSource = targetVerified ? "verified_user_report" : "user_report";
-    const signalLabel = targetVerified ? "Verified nearby report" : "Nearby user report";
-    const signalStrength = targetVerified ? 88 : 42;
+    const signalLabel = targetVerified ? "Verified nearby report" : hasLocation ? "Nearby user report" : "Account report";
+    const signalStrength = targetVerified ? 88 : nearEnoughForLive ? 42 : 24;
     const reliability = targetVerified
       ? (accuracyM <= 35 ? 0.78 : 0.68)
       : (nearEnoughForLive ? 0.38 : 0.18);
@@ -289,8 +297,8 @@ Deno.serve(async (req: Request) => {
         interaction_visibility: interactionVisibility,
         crowd_level: crowdLevel,
         wait_minutes: waitMinutes,
-        distance_m: Math.round(target.distance_m),
-        accuracy_m: Math.round(accuracyM),
+        distance_m: hasLocation ? Math.round(targetDistance) : null,
+        accuracy_m: hasLocation ? Math.round(accuracyM) : null,
         public_visible: publicVisible,
       },
       interaction_visibility: interactionVisibility,
@@ -311,10 +319,11 @@ Deno.serve(async (req: Request) => {
         interaction_visibility: interactionVisibility,
         display_name: displayName,
         avatar_url: safeAvatarUrl,
-        distance_m: Math.round(target.distance_m),
-        accuracy_m: Math.round(accuracyM),
+        distance_m: hasLocation ? Math.round(targetDistance) : null,
+        accuracy_m: hasLocation ? Math.round(accuracyM) : null,
         location_verified: targetVerified,
         near_enough_for_live: nearEnoughForLive,
+        location_status: hasLocation ? "provided" : "unavailable",
       },
       public_visible: publicVisible,
       cover_amount: coverAmount,
@@ -330,9 +339,9 @@ Deno.serve(async (req: Request) => {
       venue_name: target.name,
       verified: targetVerified,
       signal_used: publicVisible,
-      distance_m: Math.round(target.distance_m),
+      distance_m: hasLocation ? Math.round(targetDistance) : null,
       accuracy_m: Math.round(accuracyM),
-      nearest_venue_id: nearest.id,
+      nearest_venue_id: nearest?.id || null,
       report,
     }, 200, req);
   }

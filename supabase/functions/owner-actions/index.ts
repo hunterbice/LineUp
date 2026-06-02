@@ -134,9 +134,10 @@ Deno.serve(async (req) => {
       if (!["active", "closed", "hidden"].includes(status)) {
         return jsonResponse({ error: "Unsupported status" }, 400, req);
       }
+      const deprecated = status === "closed" ? true : status === "active" ? false : !!body.deprecated;
       const { error } = await admin
         .from("venues")
-        .update({ status, deprecated: !!body.deprecated })
+        .update({ status, deprecated })
         .eq("id", venueId);
       if (error) throw error;
       await audit(action, access, body);
