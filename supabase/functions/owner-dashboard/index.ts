@@ -9,6 +9,9 @@ function hourAgo(hours: number) { return new Date(Date.now() - hours * 60 * 60 *
 function uniqueCount(rows: any[], key: string) { return new Set(rows.map((r) => r[key]).filter(Boolean)).size; }
 function countBy(rows: any[], key: string) { return rows.reduce((acc: Record<string, number>, row) => { const v = row[key] || "unknown"; acc[v] = (acc[v] || 0) + 1; return acc; }, {}); }
 function displayPoint(value: unknown) { const n = Number(value); return Number.isFinite(n) ? Math.round(n * 1000) / 1000 : null; }
+function displayExact(value: unknown) { const n = Number(value); return Number.isFinite(n) ? Math.round(n * 10000000) / 10000000 : null; }
+function rowActor(row: any) { return row.user_id || row.device_id || ""; }
+function rowAgeMin(row: any) { return Math.max(0, Math.round((Date.now() - new Date(row.created_at).getTime()) / 60000)); }
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return corsResponse(req);
@@ -43,12 +46,12 @@ Deno.serve(async (req: Request) => {
 
   try {
     const [presence15, presence60, presence24, reports24, checkins24, appSignals24, rewardEvents24, redemptions24, venues, live, recentRedemptions, auditLogs] = await Promise.all([
-      supabase.from("presence_snapshots").select("nearest_venue_id, nearest_distance_m, area, source, location_verified, lat_rounded, lng_rounded, created_at, device_id, user_id").gte("created_at", since(15)).order("created_at", { ascending: false }).limit(500),
-      supabase.from("presence_snapshots").select("nearest_venue_id, nearest_distance_m, area, source, location_verified, lat_rounded, lng_rounded, created_at, device_id, user_id").gte("created_at", since(60)).order("created_at", { ascending: false }).limit(1000),
+      supabase.from("presence_snapshots").select("nearest_venue_id, nearest_distance_m, area, source, location_verified, lat_rounded, lng_rounded, lat_exact, lng_exact, created_at, device_id, user_id").gte("created_at", since(15)).order("created_at", { ascending: false }).limit(500),
+      supabase.from("presence_snapshots").select("nearest_venue_id, nearest_distance_m, area, source, location_verified, lat_rounded, lng_rounded, lat_exact, lng_exact, created_at, device_id, user_id").gte("created_at", since(60)).order("created_at", { ascending: false }).limit(1000),
       supabase.from("presence_snapshots").select("nearest_venue_id, area, source, location_verified, created_at, device_id, user_id").gte("created_at", hourAgo(24)).order("created_at", { ascending: false }).limit(3000),
       supabase.from("reports").select("venue_id, crowd_level, wait_minutes, location_verified, created_at, device_id, user_id").gte("created_at", hourAgo(24)).order("created_at", { ascending: false }).limit(1000),
       supabase.from("venue_checkins").select("venue_id, verified, created_at, device_id, user_id").gte("created_at", hourAgo(24)).order("created_at", { ascending: false }).limit(1000),
-      supabase.from("app_signal_events").select("venue_id, event_type, created_at, device_id, user_id").gte("created_at", hourAgo(24)).order("created_at", { ascending: false }).limit(2000),
+      supabase.from("app_signal_events").select("venue_id, event_type, created_at, device_id, user_id, metadata").gte("created_at", hourAgo(24)).order("created_at", { ascending: false }).limit(2000),
       supabase.from("reward_events").select("reason, points, created_at, device_id, user_id").gte("created_at", hourAgo(24)).order("created_at", { ascending: false }).limit(1000),
       supabase.from("reward_redemptions").select("reward_type, points_spent, status, created_at, device_id, user_id").gte("created_at", hourAgo(24)).order("created_at", { ascending: false }).limit(500),
       supabase.from("venues").select("id, name, area, lat, lng, status, deprecated").order("name", { ascending: true }),
@@ -64,12 +67,28 @@ Deno.serve(async (req: Request) => {
     const venueRows = venues.data || [], liveRows = live.data || [];
     const venueNames = new Map(venueRows.map((v: any) => [v.id, v.name]));
     const liveByVenue = new Map(liveRows.map((row: any) => [row.venue_id, row]));
-    const latestByDevice = new Map<string, any>();
-    for (const row of p60) { const key = row.user_id || row.device_id; if (key && !latestByDevice.has(key)) latestByDevice.set(key, row); }
-    const activePoints = Array.from(latestByDevice.values()).slice(0, 160).map((row, i) => ({ id: `active_${i + 1}`, lat: displayPoint(row.lat_rounded), lng: displayPoint(row.lng_rounded), area: row.area, source: row.source, verified: Boolean(row.location_verified), nearest_venue_id: row.nearest_venue_id, nearest_venue_name: venueNames.get(row.nearest_venue_id) || row.nearest_venue_id || "Unknown", nearest_distance_m: Number(row.nearest_distance_m || 0), age_min: Math.max(0, Math.round((Date.now() - new Date(row.created_at).getTime()) / 60000)) })).filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng));
+    const latestPresenceByActor = new Map<string, any>();
+    for (const row of p60) { const key = rowActor(row); if (key && !latestPresenceByActor.has(key)) latestPresenceByActor.set(key, row); }
+    const a15 = a24.filter((row: any) => new Date(row.created_at).getTime() >= Date.now() - 15 * 60 * 1000);
+    const a60 = a24.filter((row: any) => new Date(row.created_at).getTime() >= Date.now() - 60 * 60 * 1000);
+    const latestEventByActor = new Map<string, any>();
+    for (const row of a60) { const key = rowActor(row); if (key && !latestEventByActor.has(key)) latestEventByActor.set(key, row); }
+    const activeActors15 = new Set([...p15.map(rowActor), ...a15.map(rowActor)].filter(Boolean));
+    const activeActors60 = new Set([...p60.map(rowActor), ...a60.map(rowActor)].filter(Boolean));
+    const activePoints = Array.from(latestPresenceByActor.entries()).slice(0, 240).map(([actorKey, row], i) => {
+      const lat = displayExact(row.lat_exact) ?? displayPoint(row.lat_rounded);
+      const lng = displayExact(row.lng_exact) ?? displayPoint(row.lng_rounded);
+      return { id: `active_${i + 1}`, actor_key: actorKey, user_id: row.user_id || null, device_id: row.device_id || null, lat, lng, precision: row.lat_exact && row.lng_exact ? "exact_foreground" : "rounded", area: row.area, source: row.source, verified: Boolean(row.location_verified), nearest_venue_id: row.nearest_venue_id, nearest_venue_name: venueNames.get(row.nearest_venue_id) || row.nearest_venue_id || "Unknown", nearest_distance_m: Number(row.nearest_distance_m || 0), age_min: rowAgeMin(row) };
+    }).filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng));
+    const activeSessions = Array.from(activeActors60).slice(0, 240).map((actorKey, i) => {
+      const presence = latestPresenceByActor.get(actorKey);
+      const event = latestEventByActor.get(actorKey);
+      const newest = presence && event ? (new Date(presence.created_at) > new Date(event.created_at) ? presence : event) : (presence || event || {});
+      return { id: `session_${i + 1}`, actor_key: actorKey, user_id: newest.user_id || null, device_id: newest.device_id || null, event_type: newest.event_type || newest.source || "presence", venue_id: newest.venue_id || newest.nearest_venue_id || null, venue_name: venueNames.get(newest.venue_id || newest.nearest_venue_id) || newest.venue_id || newest.nearest_venue_id || "No venue yet", has_location: Boolean(presence), location_verified: Boolean(presence?.location_verified), age_min: rowAgeMin(newest), source: newest.source || newest.event_type || "active" };
+    }).sort((a, b) => a.age_min - b.age_min);
     const venueActivity = venueRows.map((venue: any) => { const l = liveByVenue.get(venue.id) || {}; return { id: venue.id, name: venue.name, area: venue.area, status: venue.status, deprecated: Boolean(venue.deprecated), lat: Number(venue.lat), lng: Number(venue.lng), active_users_60m: p60.filter((row: any) => row.nearest_venue_id === venue.id).length, reports_24h: r24.filter((row: any) => row.venue_id === venue.id).length, checkins_24h: c24.filter((row: any) => row.venue_id === venue.id).length, app_events_24h: a24.filter((row: any) => row.venue_id === venue.id).length, crowd_level: l.crowd_level || "unknown", wait_minutes: l.wait_minutes ?? null, confidence: l.confidence || "unknown", momentum: l.momentum || "steady", fresh_at: l.fresh_at || l.updated_at || null }; }).sort((a, b) => (a.status === "active" ? 0 : 1) - (b.status === "active" ? 0 : 1) || b.active_users_60m - a.active_users_60m || b.app_events_24h - a.app_events_24h);
-    const summary = { active_users_15m: uniqueCount(p15, "user_id") + uniqueCount(p15.filter((r: any) => !r.user_id), "device_id"), active_users_60m: uniqueCount(p60, "user_id") + uniqueCount(p60.filter((r: any) => !r.user_id), "device_id"), unique_users_24h: uniqueCount(p24, "user_id") + uniqueCount(p24.filter((r: any) => !r.user_id), "device_id"), reports_24h: r24.length, verified_reports_24h: r24.filter((row: any) => row.location_verified).length, checkins_24h: c24.length, verified_checkins_24h: c24.filter((row: any) => row.verified).length, app_events_24h: a24.length, points_issued_24h: rew24.reduce((sum: number, row: any) => sum + Number(row.points || 0), 0), redemptions_24h: red24.filter((row: any) => row.status !== "cancelled").length, generated_at: new Date().toISOString(), owner_by_account: ownerByAccount };
+    const summary = { active_users_15m: activeActors15.size, active_users_60m: activeActors60.size, active_locations_15m: new Set(p15.map(rowActor).filter(Boolean)).size, active_locations_60m: new Set(p60.map(rowActor).filter(Boolean)).size, active_without_location_60m: Math.max(0, activeActors60.size - new Set(p60.map(rowActor).filter(Boolean)).size), unique_users_24h: uniqueCount(p24, "user_id") + uniqueCount(p24.filter((r: any) => !r.user_id), "device_id"), reports_24h: r24.length, verified_reports_24h: r24.filter((row: any) => row.location_verified).length, checkins_24h: c24.length, verified_checkins_24h: c24.filter((row: any) => row.verified).length, app_events_24h: a24.length, points_issued_24h: rew24.reduce((sum: number, row: any) => sum + Number(row.points || 0), 0), redemptions_24h: red24.filter((row: any) => row.status !== "cancelled").length, generated_at: new Date().toISOString(), owner_by_account: ownerByAccount };
     const redemptions = (recentRedemptions.data || []).map((row: any) => ({ ...row, code: row.code || "" }));
-    return json({ ok: true, summary, active_points: activePoints, venue_activity: venueActivity, event_mix: countBy(a24, "event_type"), reward_mix: countBy(rew24, "reason"), timeline_60m: [], recent_redemptions: redemptions, audit_logs: auditLogs.data || [] }, 200, req);
+    return json({ ok: true, summary, active_points: activePoints, active_sessions: activeSessions, venue_activity: venueActivity, event_mix: countBy(a24, "event_type"), reward_mix: countBy(rew24, "reason"), timeline_60m: [], recent_redemptions: redemptions, audit_logs: auditLogs.data || [] }, 200, req);
   } catch (error) { return json({ error: error instanceof Error ? error.message : "Owner dashboard failed" }, 500, req); }
 });

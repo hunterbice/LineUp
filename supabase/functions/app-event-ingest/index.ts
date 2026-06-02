@@ -3,6 +3,9 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsResponse, isAllowedOrigin, jsonResponse } from "../_shared/cors.ts";
 
 const allowedEvents = new Set([
+  "app_open",
+  "app_resume",
+  "heartbeat",
   "detail_view",
   "directions_tap",
   "favorite_add",
@@ -73,8 +76,8 @@ Deno.serve(async (req: Request) => {
   const displayName = clean(body.display_name, 32);
   const avatarUrl = clean(body.avatar_url, 250000);
   const safeAvatarUrl = avatarUrl.startsWith("data:image/") ? avatarUrl : "";
-  if (!venueId || !eventType || !deviceId) {
-    return jsonResponse({ error: "venue_id, event_type, and device_id are required" }, 400, req);
+  if (!eventType || !deviceId) {
+    return jsonResponse({ error: "event_type and device_id are required" }, 400, req);
   }
   if (!allowedEvents.has(eventType)) {
     return jsonResponse({ error: "Unsupported event type" }, 400, req);
@@ -86,14 +89,16 @@ Deno.serve(async (req: Request) => {
   const user = await getUser(req, supabase);
   if (!user) return jsonResponse({ error: "LineUp account required" }, 401, req);
 
-  const { data: venue, error: venueError } = await supabase
-    .from("venues")
-    .select("id,status,deprecated")
-    .eq("id", venueId)
-    .maybeSingle();
-  if (venueError) return jsonResponse({ error: venueError.message }, 500, req);
-  if (!venue || venue.status !== "active" || venue.deprecated) {
-    return jsonResponse({ error: "Unknown active venue" }, 404, req);
+  if (venueId) {
+    const { data: venue, error: venueError } = await supabase
+      .from("venues")
+      .select("id,status,deprecated")
+      .eq("id", venueId)
+      .maybeSingle();
+    if (venueError) return jsonResponse({ error: venueError.message }, 500, req);
+    if (!venue || venue.status !== "active" || venue.deprecated) {
+      return jsonResponse({ error: "Unknown active venue" }, 404, req);
+    }
   }
 
   const { count, error: countError } = await supabase
@@ -109,7 +114,7 @@ Deno.serve(async (req: Request) => {
     .from("app_signal_events")
     .insert({
       user_id: user.id,
-      venue_id: venueId,
+      venue_id: venueId || null,
       event_type: eventType,
       device_id: deviceId,
       session_id: sessionId || null,

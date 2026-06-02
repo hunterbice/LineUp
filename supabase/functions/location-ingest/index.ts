@@ -30,6 +30,9 @@ function distanceMeters(aLat: number, aLng: number, bLat: number, bLng: number) 
 function roundCoord(value: number) {
   return Math.round(value * 10000) / 10000;
 }
+function exactCoord(value: number) {
+  return Math.round(value * 10000000) / 10000000;
+}
 
 function normalizeArea(area: string | null | undefined) {
   if (area === "university") return "university";
@@ -175,6 +178,8 @@ Deno.serve(async (req: Request) => {
       location_verified: nearestVerified,
       lat_rounded: roundCoord(lat as number),
       lng_rounded: roundCoord(lng as number),
+      lat_exact: exactCoord(lat as number),
+      lng_exact: exactCoord(lng as number),
       metadata: {
         action,
         interaction_visibility: interactionVisibility,
