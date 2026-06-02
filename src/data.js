@@ -1,4 +1,4 @@
-export const ASSET_LOGOS={gentlebens:"brand-assets/gentle-bens-logo.png?v=55",frogfirkin:"brand-assets/frog-firkin-logo.png?v=55",fuku:"brand-assets/fuku-logo.png?v=55",agave:"brand-assets/agave-house-logo.png?v=55",noanch:"brand-assets/no-anchovies-logo.png?v=55",saddle:"brand-assets/saddle-logo.png?v=55",blindpig:"brand-assets/blind-pig-logo.png?v=55",petes:"brand-assets/petes-logo.png?v=55"};
+export const ASSET_LOGOS={gentlebens:"brand-assets/gentle-bens-logo.png?v=56",frogfirkin:"brand-assets/frog-firkin-logo.png?v=56",fuku:"brand-assets/fuku-logo.png?v=56",agave:"brand-assets/agave-house-logo.png?v=56",noanch:"brand-assets/no-anchovies-logo.png?v=56",saddle:"brand-assets/saddle-logo.png?v=56",blindpig:"brand-assets/blind-pig-logo.png?v=56",petes:"brand-assets/petes-logo.png?v=56"};
 const I='fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"';
 export const SVG={
   back:'<svg viewBox="0 0 24 24" width="20" height="20" '+I+' stroke-width="2.2"><path d="M15 18l-6-6 6-6"/></svg>',
