@@ -1,13 +1,15 @@
+import * as cacheState from "../state/cacheState.js";
+
 export function createDeviceSessionService({ supabaseUrl, supabaseKey, enabled, getHeaders }) {
-  let deviceSession = JSON.parse(localStorage.getItem("lineup_device_session") || "null");
+  let deviceSession = cacheState.getDeviceSession();
   let deviceSessionPromise = null;
   let appSessionId = null;
 
   function getDeviceId() {
-    let id = deviceSession && deviceSession.device_id || localStorage.getItem("lineup_device_id");
+    let id = deviceSession && deviceSession.device_id || cacheState.getDeviceIdCache();
     if (!id) {
       id = "device_" + Math.random().toString(36).slice(2) + Date.now().toString(36);
-      localStorage.setItem("lineup_device_id", id);
+      cacheState.setDeviceIdCache(id);
     }
     return id;
   }
@@ -31,7 +33,7 @@ export function createDeviceSessionService({ supabaseUrl, supabaseKey, enabled, 
     if (deviceSessionFresh()) return Promise.resolve(deviceSession);
     if (deviceSessionPromise) return deviceSessionPromise;
     const body = {
-      device_id: deviceSession && deviceSession.device_id || localStorage.getItem("lineup_device_id") || "",
+      device_id: deviceSession && deviceSession.device_id || cacheState.getDeviceIdCache() || "",
       session_id: deviceSession && deviceSession.session_id || appSessionId || "",
       device_token: deviceSession && deviceSession.device_token || "",
     };
@@ -51,8 +53,8 @@ export function createDeviceSessionService({ supabaseUrl, supabaseKey, enabled, 
         device_token: data.device_token,
         expires_at: new Date(Date.now() + Number(data.expires_in_seconds || 0) * 1000).toISOString(),
       };
-      localStorage.setItem("lineup_device_session", JSON.stringify(deviceSession));
-      localStorage.setItem("lineup_device_id", deviceSession.device_id);
+      cacheState.setDeviceSession(deviceSession);
+      cacheState.setDeviceIdCache(deviceSession.device_id);
       appSessionId = deviceSession.session_id;
       return deviceSession;
     }).finally(function() {

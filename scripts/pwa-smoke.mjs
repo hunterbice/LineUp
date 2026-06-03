@@ -5,6 +5,7 @@ const root = process.cwd();
 const manifest = JSON.parse(fs.readFileSync(path.join(root, "manifest.webmanifest"), "utf8"));
 const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
 const mainJs = fs.readFileSync(path.join(root, "src/main.js"), "utf8");
+const configJs = fs.readFileSync(path.join(root, "src/config.js"), "utf8");
 const sw = fs.readFileSync(path.join(root, "sw.js"), "utf8");
 const publicSwPath = path.join(root, "public/sw.js");
 const publicSw = fs.existsSync(publicSwPath) ? fs.readFileSync(publicSwPath, "utf8") : null;
@@ -36,8 +37,12 @@ if (!/from "@supabase\/supabase-js"/.test(mainJs)) throw new Error("Supabase sho
 if (!/(from "mapbox-gl"|import\("mapbox-gl"\))/.test(mainJs)) throw new Error("Mapbox should be package-managed");
 if (/cdn\.jsdelivr/.test(html) || /api\.mapbox\.com\/mapbox-gl-js/.test(mainJs)) throw new Error("Unexpected CDN runtime dependency");
 if (!/CACHE_NAME\s*=\s*"lineup-pwa-v\d+"/.test(sw)) throw new Error("Service worker cache version missing");
+const appVersion = configJs.match(/APP_VERSION\s*=\s*"([^"]+)"/)?.[1];
+const swVersion = sw.match(/CACHE_NAME\s*=\s*"lineup-pwa-(v\d+)"/)?.[1];
+if (!appVersion || !swVersion || appVersion !== swVersion) throw new Error(`APP_VERSION (${appVersion}) must match service worker (${swVersion})`);
 if (!/offline\.html/.test(sw)) throw new Error("Service worker offline fallback missing");
 if (publicSw !== null && publicSw !== sw) throw new Error("public/sw.js must match root sw.js because Vite deploys the public copy");
+if (!/url\.pathname\.endsWith\("\.js"\)/.test(sw) || !/url\.pathname\.endsWith\("\.css"\)/.test(sw)) throw new Error("Service worker should network-refresh JS/CSS chunks after deploy");
 
 console.log("PWA smoke checks passed");
 console.log(`Manifest: ${manifest.name} · ${manifest.display} · ${manifest.icons.length} icons`);

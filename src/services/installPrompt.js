@@ -1,3 +1,5 @@
+import * as cacheState from "../state/cacheState.js";
+
 function installPlatform() {
   const ua = navigator.userAgent.toLowerCase();
   if (/iphone|ipad|ipod/.test(ua)) return "ios";
@@ -8,14 +10,15 @@ function installPlatform() {
 function shouldShowInstallPrompt() {
   const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
   if (isStandalone) {
-    localStorage.setItem("lineup_pwa_installed", "true");
+    cacheState.markPwaInstalled();
     return false;
   }
   const isMobile = /iphone|ipad|ipod|android/i.test(navigator.userAgent);
   if (!isMobile) return false;
-  if (localStorage.getItem("lineup_install_prompt_completed") === "true") return false;
-  if (localStorage.getItem("lineup_pwa_installed") === "true") return false;
-  const dismissedAt = Number(localStorage.getItem("lineup_install_prompt_dismissed_at") || 0);
+  const promptState = cacheState.getInstallPromptState();
+  if (promptState.completed) return false;
+  if (promptState.installed) return false;
+  const dismissedAt = promptState.dismissedAt;
   return !(dismissedAt && Date.now() - dismissedAt < 7 * 24 * 60 * 60 * 1000);
 }
 
@@ -52,17 +55,18 @@ export function createInstallPromptController() {
       deferredPrompt = null;
       prompt.prompt();
       prompt.userChoice.then(function(choice) {
-        localStorage.setItem(choice.outcome === "accepted" ? "lineup_install_prompt_completed" : "lineup_install_prompt_dismissed_at", choice.outcome === "accepted" ? "true" : Date.now().toString());
+        if (choice.outcome === "accepted") cacheState.markInstallPromptCompleted();
+        else cacheState.markInstallPromptDismissed();
         hideInstallPrompt();
       });
       return;
     }
-    localStorage.setItem("lineup_install_prompt_dismissed_at", Date.now().toString());
+    cacheState.markInstallPromptDismissed();
     hideInstallPrompt();
   }
 
   function handleInstallSecondary() {
-    localStorage.setItem("lineup_install_prompt_dismissed_at", Date.now().toString());
+    cacheState.markInstallPromptDismissed();
     hideInstallPrompt();
   }
 
@@ -72,8 +76,8 @@ export function createInstallPromptController() {
       deferredPrompt = event;
     });
     window.addEventListener("appinstalled", function() {
-      localStorage.setItem("lineup_pwa_installed", "true");
-      localStorage.setItem("lineup_install_prompt_completed", "true");
+      cacheState.markPwaInstalled();
+      cacheState.markInstallPromptCompleted();
       hideInstallPrompt();
     });
   }

@@ -8,9 +8,10 @@
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1",
     "smoke:source": "node scripts/source-of-truth-smoke.mjs",
+    "smoke:reliability": "node scripts/reliability-smoke.mjs",
     "smoke:pwa": "node scripts/pwa-smoke.mjs",
     "smoke:app": "node scripts/app-smoke.mjs",
-    "test": "npm run smoke:source && npm run smoke:pwa && npm run build && npm run smoke:app"
+    "test": "npm run smoke:source && npm run smoke:reliability && npm run smoke:pwa && npm run build && npm run smoke:app"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.106.2",

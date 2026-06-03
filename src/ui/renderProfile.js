@@ -10,7 +10,10 @@ function trustLabel(tier) {
 }
 
 export function renderRewardsHtml({ rewardViewState }) {
-  const state = rewardViewState();
+  const state = rewardViewState ? rewardViewState() : {};
+  state.points = Number(state.points || 0);
+  state.goal = Number(state.goal || 500);
+  state.redeemed = Number(state.redeemed || 0);
   const pct = Math.min(100, Math.round((state.points/state.goal)*100));
   const left = Math.max(0, state.goal-state.points);
   const latest = state.redemptions&&state.redemptions[0];
@@ -36,7 +39,8 @@ export function renderLegalSheetHtml(kind) {
 }
 
 export function renderProfilePageHtml(view, ctx) {
-  const { svg, accountPrefs, authState, favs, activeBars, isFav, interactionVisibility, publicName, profileAvatar, rewardViewState, profileSummary, presenceState, presenceCopy, prefStatus, cap } = ctx;
+  ctx = ctx || {};
+  const { svg = {}, accountPrefs = {}, authState = null, favs = [], activeBars = function(){return[]}, isFav = function(){return false}, interactionVisibility = function(){return"anonymous"}, publicName = function(){return"LineUp User"}, profileAvatar = function(){return"L"}, rewardViewState = function(){return{points:0,goal:500}}, profileSummary = null, presenceState = null, presenceCopy = function(){return{title:"Off",detail:"Tap to enable while using"}}, prefStatus = function(){return"unset"}, cap = function(value){return String(value||"")} } = ctx;
   const mode = interactionVisibility();
   const views = {
     home() {

@@ -57,6 +57,25 @@ export function setFavorites(value) { return writeJson("lineup_favorites", value
 export function getArea() { return localStorage.getItem("lineup_area") || "main_gate"; }
 export function setArea(value) { localStorage.setItem("lineup_area", value); return value; }
 
+export function getMapboxTokenOverride() { return localStorage.getItem("lineup_mapbox_token") || ""; }
+export function isDeviceSessionEnabled() { return localStorage.getItem("lineup_device_session_enabled") !== "false"; }
+
+export function getInstallPromptState() {
+  return {
+    installed: localStorage.getItem("lineup_pwa_installed") === "true",
+    completed: localStorage.getItem("lineup_install_prompt_completed") === "true",
+    dismissedAt: Number(localStorage.getItem("lineup_install_prompt_dismissed_at") || 0),
+  };
+}
+export function markPwaInstalled() { localStorage.setItem("lineup_pwa_installed", "true"); }
+export function markInstallPromptCompleted() { localStorage.setItem("lineup_install_prompt_completed", "true"); }
+export function markInstallPromptDismissed(at = Date.now()) { localStorage.setItem("lineup_install_prompt_dismissed_at", String(at)); }
+
+export function getDeviceSession() { return readJson("lineup_device_session", null); }
+export function setDeviceSession(value) { return writeJson("lineup_device_session", value); }
+export function getDeviceIdCache() { return localStorage.getItem("lineup_device_id") || ""; }
+export function setDeviceIdCache(value) { localStorage.setItem("lineup_device_id", value); return value; }
+
 export function clearSignedInAccountCache() {
   clearAuthState();
   clearAccountPrefs();

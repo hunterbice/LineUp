@@ -1,5 +1,5 @@
 // Keep this version in sync with APP_VERSION in index.html.
-const CACHE_NAME = "lineup-pwa-v61";
+const CACHE_NAME = "lineup-pwa-v62";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -76,6 +76,9 @@ self.addEventListener("fetch", (event) => {
           return response;
         })
         .catch(() => Response.error());
+      if (url.pathname.endsWith(".js") || url.pathname.endsWith(".css")) {
+        return network.catch(() => cached || Response.error());
+      }
       return cached || network;
     })
   );

@@ -1,4 +1,7 @@
 import { readFileSync } from "node:fs";
+import { readdirSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const main = readFileSync(new URL("../src/main.js", import.meta.url), "utf8");
 const cacheState = readFileSync(new URL("../src/state/cacheState.js", import.meta.url), "utf8");
@@ -40,6 +43,20 @@ if (!/backend:\s*\{[\s\S]*venues/.test(appState) || !/ui:\s*\{[\s\S]*activePage/
 
 if (!/export function selectPage/.test(navigationController) || !/export function selectArea/.test(navigationController)) {
   failures.push("navigation controller should own page and area selection helpers");
+}
+
+function walk(dir) {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const full = join(dir, entry.name);
+    return entry.isDirectory() ? walk(full) : full;
+  });
+}
+
+const directStorageFiles = walk(fileURLToPath(new URL("../src", import.meta.url)))
+  .filter((file) => file.endsWith(".js") && !file.endsWith("src/state/cacheState.js"))
+  .filter((file) => /localStorage\./.test(readFileSync(file, "utf8")));
+if (directStorageFiles.length) {
+  failures.push(`localStorage access must go through cacheState.js: ${directStorageFiles.join(", ")}`);
 }
 
 if (failures.length) {
