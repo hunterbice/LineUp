@@ -1,6 +1,9 @@
 import { readFileSync } from "node:fs";
 
 const main = readFileSync(new URL("../src/main.js", import.meta.url), "utf8");
+const cacheState = readFileSync(new URL("../src/state/cacheState.js", import.meta.url), "utf8");
+const appState = readFileSync(new URL("../src/state/appState.js", import.meta.url), "utf8");
+const navigationController = readFileSync(new URL("../src/controllers/navigationController.js", import.meta.url), "utf8");
 
 const forbiddenPatterns = [
   [/\bvar\s+BAR_UPDATES\b/, "BAR_UPDATES must not exist as production state"],
@@ -15,8 +18,12 @@ const failures = forbiddenPatterns
   .filter(([pattern]) => pattern.test(main))
   .map(([, message]) => message);
 
-if (!/localStorage\.removeItem\("lineup_bar_updates"\)/.test(main)) {
-  failures.push("old lineup_bar_updates cache should be cleared during boot");
+if (!/clearLegacyVenueOverrides\(\)/.test(main)) {
+  failures.push("app boot should call cacheState.clearLegacyVenueOverrides()");
+}
+
+if (!/localStorage\.removeItem\("lineup_bar_updates"\)/.test(cacheState)) {
+  failures.push("old lineup_bar_updates cache should be cleared by cacheState");
 }
 
 if (!/await loadSupabaseStatus\(\)/.test(main)) {
@@ -25,6 +32,14 @@ if (!/await loadSupabaseStatus\(\)/.test(main)) {
 
 if (!/syncVenueAdminToSupabase\(id,patch\)/.test(main)) {
   failures.push("staff updates should pass a backend payload instead of mutating local bars");
+}
+
+if (!/backend:\s*\{[\s\S]*venues/.test(appState) || !/ui:\s*\{[\s\S]*activePage/.test(appState)) {
+  failures.push("appState should separate backend data from UI selections");
+}
+
+if (!/export function selectPage/.test(navigationController) || !/export function selectArea/.test(navigationController)) {
+  failures.push("navigation controller should own page and area selection helpers");
 }
 
 if (failures.length) {
