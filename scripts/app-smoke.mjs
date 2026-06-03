@@ -64,6 +64,7 @@ async function main() {
     await page.locator("#setupName").fill("Smoke Test");
     await page.locator(".setupGate button", { hasText: "Finish Setup" }).click();
     await page.waitForSelector("#livePage.active");
+    await page.waitForSelector(".barcard .statusline");
     await page.locator(".barcard").first().click();
     await page.waitForSelector("#detail.open");
     await page.locator(".tabs2 button", { hasText: "Highlights" }).click();

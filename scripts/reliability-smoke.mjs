@@ -38,8 +38,8 @@ ordered(main, [/ownerAction\("venue_live_update"/, /loadSupabaseStatus\(\)/, /ow
 ordered(main, [/ownerAction\("set_venue_status"/, /loadSupabaseStatus\(\)/, /ownerRequest\(\)/], "owner status flow");
 assert.doesNotMatch(main, /Local update saved|saved locally/, "staff/report UI should not claim local mutation");
 assert.equal(sw, publicSw, "public service worker must match root service worker");
-assert.equal(config.match(/APP_VERSION\s*=\s*"([^"]+)"/)?.[1], "v62", "APP_VERSION should be v62");
-assert.match(sw, /lineup-pwa-v62/, "service worker should be v62");
+assert.equal(config.match(/APP_VERSION\s*=\s*"([^"]+)"/)?.[1], "v63", "APP_VERSION should be v63");
+assert.match(sw, /lineup-pwa-v63/, "service worker should be v63");
 
 let calls = [];
 const barController = createBarDetailController({
