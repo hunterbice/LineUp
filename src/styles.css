@@ -9,6 +9,7 @@
   --dead:#68707D;--slow:#6F7DFF;--busy:#FFB23F;--packed:#FF4F7B;
   --high:#12E0C4;--medium:#FFB23F;--low:#8A909C;--danger:#FF4F7B;
   --shadow:0 18px 50px rgba(0,0,0,.32);--shadow-card:0 10px 28px rgba(0,0,0,.24);--radius:20px;
+  --glass-bg:rgba(13,16,26,.72);--glass-bg-strong:rgba(18,22,34,.82);--glass-border:rgba(255,255,255,.10);--glass-highlight:rgba(255,255,255,.08);--glass-shadow:0 18px 48px rgba(0,0,0,.34);
 }
 html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
 body{overflow-x:hidden}
@@ -145,3 +146,11 @@ body[data-page="accountGate"] .topbar,body[data-page="setupGate"] .topbar{positi
 #authModeCreate:checked~.authCtaCreate{display:block}
 .authLegal{margin-top:16px}
 .authLegal .authNote{display:block;margin-top:5px;color:var(--muted);font-size:10px}
+/* ── LIQUID-GLASS POLISH (shell/nav surfaces only; solid base rules above are the fallback) ── */
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))){
+  .bottomnav{background:var(--glass-bg);-webkit-backdrop-filter:blur(22px) saturate(150%);backdrop-filter:blur(22px) saturate(150%);border-top:1px solid var(--glass-border);box-shadow:var(--glass-shadow),inset 0 1px 0 var(--glass-highlight)}
+  .navbtn.on{background:linear-gradient(180deg,rgba(20,92,255,.16),rgba(20,92,255,.04));box-shadow:inset 0 1px 0 var(--glass-highlight),0 0 0 1px var(--brand-border)}
+  .notify{background:var(--glass-bg-strong);-webkit-backdrop-filter:blur(18px) saturate(150%);backdrop-filter:blur(18px) saturate(150%);border:1px solid var(--glass-border);box-shadow:inset 0 1px 0 var(--glass-highlight)}
+  .seg{background:var(--glass-bg);-webkit-backdrop-filter:blur(18px) saturate(150%);backdrop-filter:blur(18px) saturate(150%);border:1px solid var(--glass-border);box-shadow:inset 0 1px 0 var(--glass-highlight)}
+  .install-card{background:radial-gradient(circle at 82% 4%,rgba(4,20,223,.22),transparent 30%),radial-gradient(circle at 8% 100%,rgba(255,79,123,.08),transparent 38%),linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.015)),var(--glass-bg-strong);-webkit-backdrop-filter:blur(26px) saturate(150%);backdrop-filter:blur(26px) saturate(150%);border:1px solid var(--glass-border);box-shadow:0 26px 80px rgba(0,0,0,.5),inset 0 1px 0 var(--glass-highlight)}
+}
