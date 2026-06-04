@@ -27,8 +27,7 @@
 <link rel="canonical" href="https://get-lineup.app/">
 <link rel="icon" href="/icons/favicon-32.png?v=63" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png?v=63" sizes="180x180">
-<link rel="preload" href="/assets/LineUp_Header_Wordmark_2x.png" as="image">
-<link rel="preload" href="/assets/LineUp_Splash_Wordmark_2x.png" as="image">
+<link rel="preload" href="/fonts/GeneralSans-Bold.woff2" as="font" type="font/woff2" crossorigin>
 <title>LineUp</title>
 <link rel="stylesheet" href="./src/styles.css">
 </head>
@@ -36,8 +35,7 @@
 <div id="splash" class="splash-screen">
   <div class="splash-content">
     <div class="splash-logo-wrap">
-      <img src="/assets/LineUp_Splash_Wordmark_2x.png" alt="LineUp" class="splash-logo">
-      <div class="splash-up-glow"></div>
+      <span class="lineup-wordmark splash-wordmark">LineUp</span>
     </div>
     <div class="splash-tagline">Know the move before you move.</div>
   </div>
@@ -46,7 +44,7 @@
   <header class="topbar">
     <div class="app-header">
       <div class="brand-block">
-        <img src="/assets/LineUp_Header_Wordmark_2x.png" alt="LineUp" class="logo-wordmark">
+        <span class="lineup-wordmark">LineUp</span>
         <div class="app-subtitle"><span>Know the move before you move.</span></div>
       </div>
       <button class="notify" id="liveAlertButton" aria-label="Live alerts" onclick="showToast('Live alerts are on')"><svg class="heartbeat live-motion" viewBox="0 0 32 24" aria-hidden="true"><path class="trace" d="M2 13h6l3-8 5 16 4-10 3 2h7"/></svg></button>
@@ -74,14 +72,14 @@
       <div class="install-mini-brand">
         <img src="/icons/icon-192.png" alt="" aria-hidden="true" class="install-app-icon">
         <div class="install-mini-copy">
-          <img src="/assets/LineUp_Header_Wordmark_2x.png" alt="LineUp" class="install-mini-wordmark">
+          <span class="lineup-wordmark install-mini-wordmark">LineUp</span>
           <div class="install-mini-subtitle">Home Screen App</div>
         </div>
       </div>
       <div class="install-pill"><span class="live-dot"></span> APP INSTALL</div>
     </div>
     <h1 class="install-title" id="install-heading">
-      <span>Add</span><img src="/assets/LineUp_Header_Wordmark_2x.png" alt="LineUp" class="install-title-wordmark"><span>to your Home Screen</span>
+      <span>Add</span><span class="lineup-wordmark install-title-wordmark">LineUp</span><span>to your Home Screen</span>
     </h1>
     <p class="install-copy">Get to live bar status faster. Check crowds, line waits, closing times, and where the move is without digging for the link.</p>
     <div class="install-benefits">
