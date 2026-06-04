@@ -58,6 +58,7 @@ async function main() {
     const stamp = `${Date.now()}${Math.round(Math.random() * 10000)}`;
     await page.locator("#authEmail").fill(`smoke-${stamp}@get-lineup.app`);
     await page.locator("#authPassword").fill("lineup-smoke-1");
+    await page.locator(".authToggle label", { hasText: "Create account" }).click();
     await page.locator("#authName").fill("Smoke Test");
     await page.locator(".accountGate button", { hasText: "Create Account" }).click();
     await page.waitForSelector(".setupGate");
