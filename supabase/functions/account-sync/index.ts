@@ -110,7 +110,7 @@ Deno.serve(async (req: Request) => {
     const nextDisplayName = prefs.display_name ?? existingProfile?.display_name ?? fallbackDisplayName;
     const nextVisibility = prefs.interaction_visibility || existingProfile?.interaction_visibility || "anonymous";
     const nextAvatar = prefs.avatar_url ?? existingProfile?.avatar_url ?? null;
-    const nextSetup = prefs.profile_setup_completed ?? Boolean(existingProfile?.profile_setup_completed);
+    const nextSetup = Boolean(existingProfile?.profile_setup_completed) || prefs.profile_setup_completed === true;
     const nextNotification = prefs.notification_pref || existingProfile?.notification_pref || "unset";
     const nextLocation = prefs.location_pref || existingProfile?.location_pref || "unset";
     const now = new Date().toISOString();
