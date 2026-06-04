@@ -67,8 +67,6 @@ async function main() {
     await page.waitForSelector(".barcard .statusline");
     await page.locator(".barcard").first().click();
     await page.waitForSelector("#detail.open");
-    await page.locator(".tabs2 button", { hasText: "Highlights" }).click();
-    await page.waitForSelector(".tabs2 button.on", { hasText: "Highlights" });
     await page.locator(".tabs2 button", { hasText: "Intel" }).click();
     await page.waitForSelector(".tabs2 button.on", { hasText: "Intel" });
     await page.locator(".tabs2 button", { hasText: "Events" }).click();

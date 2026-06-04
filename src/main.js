@@ -239,7 +239,7 @@ initSupabase();
   var el=document.getElementById("detail"),g={sx:0,sy:0,t0:0,dir:null,active:false};
   el.addEventListener("touchstart",function(e){
     if(e.touches.length!==1)return;
-    g.sx=e.touches[0].clientX;g.sy=e.touches[0].clientY;g.t0=e.timeStamp;g.dir=null;g.active=true;
+    g.sx=e.touches[0].clientX;g.sy=e.touches[0].clientY;g.t0=e.timeStamp;g.dir=null;g.active=true;g.startTop=el.scrollTop;
   },{passive:true});
   el.addEventListener("touchmove",function(e){
     if(!g.active||e.touches.length!==1)return;
@@ -251,13 +251,25 @@ initSupabase();
     if(!g.active)return;g.active=false;
     var dx=e.changedTouches[0].clientX-g.sx,dy=e.changedTouches[0].clientY-g.sy,dt=Math.max(1,e.timeStamp-g.t0);
     var vx=dx/dt,vy=dy/dt;
-    if(g.dir==="v"&&(dy>window.innerHeight*0.22||vy>0.45)){closeDetail();return;}
+    if(g.dir==="v"&&g.startTop<=0&&dy>0&&(dy>window.innerHeight*0.22||vy>0.45)){closeDetail();return;}
     if(g.dir==="h"){
       var bars=barsInArea(),idx=bars.findIndex(function(b){return b.id===current.id;});
       if((dx<-55||vx<-0.4)&&idx<bars.length-1)navigateDetail(bars[idx+1].id,"left");
       else if((dx>55||vx>0.4)&&idx>0)navigateDetail(bars[idx-1].id,"right");
     }
   },{passive:true});
+})();
+(function(){
+  var THRESH=68,RES=0.55,pulling=false,sy=0,sx=0,dist=0,busy=false;
+  var ind=document.createElement("div");ind.className="ptr";ind.innerHTML='<span class="ptr-spin"></span><b>Pull to refresh</b>';document.body.appendChild(ind);
+  var label=ind.querySelector("b");
+  function eligible(){return !busy&&(active==="livePage"||active==="statsPage")&&!$("#detail").classList.contains("open")&&!$("#reportSheet").classList.contains("open")&&!$("#installPrompt").classList.contains("open")&&(window.scrollY||document.documentElement.scrollTop||0)<=0}
+  function show(p){var d=Math.min(p,THRESH+34);ind.style.transform="translateX(-50%) translateY("+(d-12)+"px)";ind.style.opacity=Math.min(1,d/THRESH);ind.classList.toggle("ready",p>=THRESH)}
+  function reset(){ind.style.transform="translateX(-50%) translateY(-64px)";ind.style.opacity=0;ind.classList.remove("ready");label.textContent="Pull to refresh"}
+  function run(){busy=true;ind.classList.add("loading");label.textContent="Refreshing…";ind.style.transform="translateX(-50%) translateY(12px)";ind.style.opacity=1;var p=(active==="statsPage"&&isOwnerAccount())?refreshOwnerDashboard():loadSupabaseStatus();Promise.resolve(p).catch(function(){}).then(function(){setTimeout(function(){busy=false;ind.classList.remove("loading");reset();},400)})}
+  window.addEventListener("touchstart",function(e){if(e.touches.length!==1||!eligible()){pulling=false;return}sy=e.touches[0].clientY;sx=e.touches[0].clientX;dist=0;pulling=true},{passive:true});
+  window.addEventListener("touchmove",function(e){if(!pulling||e.touches.length!==1)return;var dy=e.touches[0].clientY-sy,dx=e.touches[0].clientX-sx;if(dy<=0||Math.abs(dx)>Math.abs(dy)||(window.scrollY||0)>0){pulling=false;reset();return}dist=dy*RES;if(dy>6)e.preventDefault();show(dist)},{passive:false});
+  window.addEventListener("touchend",function(){if(!pulling)return;pulling=false;if(dist>=THRESH)run();else reset()},{passive:true});
 })();
 (function(){var s=document.getElementById("splash");setTimeout(function(){s.classList.add("out");setTimeout(function(){s.style.display="none";setTimeout(function(){installPrompt.maybeShowAfterSplash();},800);},400);},3200)})();
 if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("/sw.js").then(function(reg){reg.update&&reg.update()}).catch(function(){})})}
