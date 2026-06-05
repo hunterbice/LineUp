@@ -87,6 +87,7 @@ export function createVenueDealService() {
       .select("id,venue_id,title,description,deal_type,starts_at,ends_at,is_active,is_promoted,promotion_tier,created_by,created_at,updated_at")
       .eq("venue_id", venueId)
       .eq("is_active", true)
+      .lte("starts_at", now)
       .gt("ends_at", now)
       .order("starts_at", { ascending: true })
       .then(function(res) {

@@ -69,6 +69,51 @@ async function main() {
         created_at: new Date(now - 60 * 60 * 1000).toISOString(),
         updated_at: new Date(now - 60 * 60 * 1000).toISOString(),
       },
+      {
+        id: "22222222-2222-4222-8222-222222222222",
+        venue_id: "bens",
+        title: "Expired smoke deal",
+        description: "Should never render",
+        deal_type: "deal",
+        starts_at: new Date(now - 6 * 60 * 60 * 1000).toISOString(),
+        ends_at: new Date(now - 2 * 60 * 60 * 1000).toISOString(),
+        is_active: true,
+        is_promoted: true,
+        promotion_tier: "boost",
+        created_by: null,
+        created_at: new Date(now - 6 * 60 * 60 * 1000).toISOString(),
+        updated_at: new Date(now - 6 * 60 * 60 * 1000).toISOString(),
+      },
+      {
+        id: "33333333-3333-4333-8333-333333333333",
+        venue_id: "bens",
+        title: "Future smoke deal",
+        description: "Should never render",
+        deal_type: "deal",
+        starts_at: new Date(now + 2 * 60 * 60 * 1000).toISOString(),
+        ends_at: new Date(now + 6 * 60 * 60 * 1000).toISOString(),
+        is_active: true,
+        is_promoted: true,
+        promotion_tier: "boost",
+        created_by: null,
+        created_at: new Date(now).toISOString(),
+        updated_at: new Date(now).toISOString(),
+      },
+      {
+        id: "44444444-4444-4444-8444-444444444444",
+        venue_id: "bens",
+        title: "Inactive smoke deal",
+        description: "Should never render",
+        deal_type: "deal",
+        starts_at: new Date(now - 60 * 60 * 1000).toISOString(),
+        ends_at: new Date(now + 4 * 60 * 60 * 1000).toISOString(),
+        is_active: false,
+        is_promoted: true,
+        promotion_tier: "boost",
+        created_by: null,
+        created_at: new Date(now - 60 * 60 * 1000).toISOString(),
+        updated_at: new Date(now - 60 * 60 * 1000).toISOString(),
+      },
     ];
     await page.addInitScript((deals) => {
       window.LINEUP_TEST_DEALS = deals;
@@ -99,6 +144,9 @@ async function main() {
     await page.waitForSelector(".barcard .statusline");
     await page.locator(".sectionlabel", { hasText: "TONIGHT’S DEALS" }).waitFor();
     await page.locator(".dealCard", { hasText: "Promoted" }).waitFor();
+    if (await page.locator("text=Expired smoke deal").count()) throw new Error("Expired deals should not render");
+    if (await page.locator("text=Future smoke deal").count()) throw new Error("Future deals should not render");
+    if (await page.locator("text=Inactive smoke deal").count()) throw new Error("Inactive deals should not render");
     await page.locator(".emptyState", { hasText: "No favorite spots yet" }).waitFor();
     await page.evaluate(() => localStorage.setItem("lineup_recent_venues", JSON.stringify([{ venueId: "stale_missing_venue", viewedAt: Date.now() }])));
     await page.reload({ waitUntil: "networkidle" });

@@ -5,8 +5,10 @@ import { createBarDetailController } from "../src/controllers/barDetailControlle
 import { createOwnerController } from "../src/controllers/ownerController.js";
 import { createReportController } from "../src/controllers/reportController.js";
 import { hydrateVenues } from "../src/controllers/retentionController.js";
-import { groupDealsByVenue, selectDashboardDeals } from "../src/controllers/dealController.js";
+import { groupDealsByVenue, isDealCurrent, selectDashboardDeals } from "../src/controllers/dealController.js";
 import { createVenueStaffController } from "../src/controllers/venueStaffController.js";
+import { venueAnalyticsTestHooks } from "../src/services/venueAnalyticsService.js";
+import { venueDealTestHooks } from "../src/services/venueDealService.js";
 import { renderDetailHtml, renderReportRows } from "../src/ui/renderBarDetail.js";
 import { renderRetentionDashboard } from "../src/ui/renderDashboard.js";
 import { renderDealBadge, renderDealSection, renderVenueDealBlock } from "../src/ui/renderDeals.js";
@@ -47,8 +49,8 @@ ordered(main, [/ownerAction\("venue_live_update"/, /loadSupabaseStatus\(\)/, /ow
 ordered(main, [/ownerAction\("set_venue_status"/, /loadSupabaseStatus\(\)/, /ownerRequest\(\)/], "owner status flow");
 assert.doesNotMatch(main, /Local update saved|saved locally/, "staff/report UI should not claim local mutation");
 assert.equal(sw, publicSw, "public service worker must match root service worker");
-assert.equal(config.match(/APP_VERSION\s*=\s*"([^"]+)"/)?.[1], "v65", "APP_VERSION should be v65");
-assert.match(sw, /lineup-pwa-v65/, "service worker should be v65");
+assert.equal(config.match(/APP_VERSION\s*=\s*"([^"]+)"/)?.[1], "v66", "APP_VERSION should be v66");
+assert.match(sw, /lineup-pwa-v66/, "service worker should be v66");
 
 const dealServiceSource = fs.readFileSync(path.join(root, "src/services/venueDealService.js"), "utf8");
 const dealRendererSource = fs.readFileSync(path.join(root, "src/ui/renderDeals.js"), "utf8");
@@ -108,17 +110,49 @@ const activeDeals = [
   { id: "promoted", venueId: "fresh", title: "No cover before 10", description: "Tonight only", dealType: "cover", startsAt: new Date(Date.now() - 60000).toISOString(), endsAt: new Date(Date.now() + 3600000).toISOString(), isActive: true, isPromoted: true, promotionTier: "boost" },
   { id: "standard", venueId: "other", title: "$3 wells", description: "", dealType: "deal", startsAt: new Date(Date.now() - 60000).toISOString(), endsAt: new Date(Date.now() + 3600000).toISOString(), isActive: true, isPromoted: false, promotionTier: "standard" },
   { id: "missing", venueId: "missing", title: "Ghost", description: "", dealType: "deal", startsAt: new Date().toISOString(), endsAt: new Date(Date.now() + 3600000).toISOString(), isActive: true, isPromoted: true, promotionTier: "boost" },
+  { id: "expired", venueId: "fresh", title: "Expired", description: "", dealType: "deal", startsAt: new Date(Date.now() - 7200000).toISOString(), endsAt: new Date(Date.now() - 3600000).toISOString(), isActive: true, isPromoted: true, promotionTier: "boost" },
+  { id: "future", venueId: "fresh", title: "Future", description: "", dealType: "deal", startsAt: new Date(Date.now() + 3600000).toISOString(), endsAt: new Date(Date.now() + 7200000).toISOString(), isActive: true, isPromoted: true, promotionTier: "boost" },
+  { id: "inactive", venueId: "fresh", title: "Inactive", description: "", dealType: "deal", startsAt: new Date(Date.now() - 60000).toISOString(), endsAt: new Date(Date.now() + 3600000).toISOString(), isActive: false, isPromoted: true, promotionTier: "boost" },
 ];
+assert.equal(isDealCurrent(activeDeals[0]), true, "active current deals should be displayable");
+assert.equal(isDealCurrent(activeDeals[3]), false, "expired deals should not be displayable");
+assert.equal(isDealCurrent(activeDeals[4]), false, "future deals should not be displayable");
+assert.equal(isDealCurrent(activeDeals[5]), false, "inactive deals should not be displayable");
 const groupedDeals = groupDealsByVenue(activeDeals);
 assert.equal(groupedDeals.fresh[0].id, "promoted", "deals should group by venue without touching venue objects");
 const selectedDeals = selectDashboardDeals({ deals: activeDeals, venues: backendVenues, favorites: [backendVenues[1]], recents: [] });
 assert.deepEqual(selectedDeals.map((deal) => deal.id), ["promoted", "standard"], "dashboard deals should hydrate against backend venues and exclude missing venues");
+assert.equal(selectedDeals.some((deal) => /expired|future|inactive/.test(deal.id)), false, "dashboard deals should exclude expired, future, and inactive rows");
 const originalVenue = structuredClone(backendVenues[0]);
 const dealHtml = renderDealSection({ deals: selectedDeals, venuesById: { fresh: backendVenues[0], other: backendVenues[1] }, signalState: () => ({ label: "Fresh staff update", detail: "Updated now" }) });
 assert.match(dealHtml, /Promoted/, "promoted deal card should be labeled");
 assert.match(renderDealBadge(activeDeals[1]), /\$3 wells/, "venue cards should show small active deal badges");
 assert.match(renderVenueDealBlock([activeDeals[0]]), /Venue posted/, "detail deal block should label venue-posted marketing");
 assert.deepEqual(backendVenues[0], originalVenue, "deal rendering must not mutate backend venue live status");
+const normalizedDealPayload = venueDealTestHooks.normalizePayload({
+  venueId: "fresh",
+  title: "A".repeat(120),
+  description: "B".repeat(320),
+  dealType: "bad_type",
+  promotionTier: "bad_tier",
+  isPromoted: false,
+  startsAt: activeDeals[0].startsAt,
+  endsAt: activeDeals[0].endsAt,
+});
+assert.equal(normalizedDealPayload.title.length, 80, "deal payload titles should be capped before backend write");
+assert.equal(normalizedDealPayload.description.length, 240, "deal payload descriptions should be capped before backend write");
+assert.equal(normalizedDealPayload.deal_type, "deal", "invalid deal types should normalize");
+assert.equal(normalizedDealPayload.promotion_tier, "standard", "non-promoted deals should stay standard tier");
+const sanitizedMetadata = venueAnalyticsTestHooks.sanitizeMetadata({
+  surface: "dashboard",
+  lat: 32.1,
+  lng: -110.9,
+  locationLabel: "hidden",
+  longText: "x".repeat(300),
+  count: 2,
+});
+assert.deepEqual(Object.keys(sanitizedMetadata).sort(), ["count", "longText", "surface"], "analytics metadata should drop location-like keys");
+assert.equal(sanitizedMetadata.longText.length, 120, "analytics metadata strings should be capped");
 
 calls = [];
 const reportController = createReportController({

@@ -7,12 +7,20 @@ export function groupDealsByVenue(deals) {
   }, {});
 }
 
+export function isDealCurrent(deal, nowMs = Date.now()) {
+  if (!deal || !deal.id || !deal.venueId || deal.isActive === false) return false;
+  const startsAt = Date.parse(deal.startsAt || "");
+  const endsAt = Date.parse(deal.endsAt || "");
+  if (!Number.isFinite(startsAt) || !Number.isFinite(endsAt)) return false;
+  return startsAt <= nowMs && endsAt > nowMs;
+}
+
 export function selectDashboardDeals({ deals, venues, favorites, recents }) {
   const venueIds = new Set((Array.isArray(venues) ? venues : []).map((venue) => venue.id));
   const favoriteIds = new Set((Array.isArray(favorites) ? favorites : []).map((venue) => venue.id));
   const recentIds = new Set((Array.isArray(recents) ? recents : []).map((venue) => venue.id));
   const seen = new Set();
-  const active = (Array.isArray(deals) ? deals : []).filter((deal) => venueIds.has(deal.venueId));
+  const active = (Array.isArray(deals) ? deals : []).filter((deal) => isDealCurrent(deal) && venueIds.has(deal.venueId));
   function take(predicate) {
     return active.filter(function(deal) {
       if (seen.has(deal.id) || !predicate(deal)) return false;
@@ -30,13 +38,14 @@ export function selectDashboardDeals({ deals, venues, favorites, recents }) {
 export function createDealController(deps) {
   function client() { return deps.supabaseClient && deps.supabaseClient(); }
   function setDeals(deals) {
+    const currentDeals = (Array.isArray(deals) ? deals : []).filter((deal) => isDealCurrent(deal));
     deps.setDealState({
-      activeDeals: deals,
-      dealsByVenue: groupDealsByVenue(deals),
+      activeDeals: currentDeals,
+      dealsByVenue: groupDealsByVenue(currentDeals),
       dealLoading: false,
       dealError: "",
     });
-    return deals;
+    return currentDeals;
   }
 
   function loadActiveDeals(renderAfter) {

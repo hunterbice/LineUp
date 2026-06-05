@@ -10,6 +10,10 @@ const navigationController = readFileSync(new URL("../src/controllers/navigation
 const dealService = readFileSync(new URL("../src/services/venueDealService.js", import.meta.url), "utf8");
 const dealController = readFileSync(new URL("../src/controllers/dealController.js", import.meta.url), "utf8");
 const dealRenderer = readFileSync(new URL("../src/ui/renderDeals.js", import.meta.url), "utf8");
+const dealMigration = readFileSync(new URL("../supabase/migrations/202606050001_venue_deals_marketing_layer.sql", import.meta.url), "utf8");
+const dealGrantMigration = readFileSync(new URL("../supabase/migrations/202606050002_venue_deals_api_grants.sql", import.meta.url), "utf8");
+const dealPolicyGrantMigration = readFileSync(new URL("../supabase/migrations/202606050003_venue_deals_policy_function_grants.sql", import.meta.url), "utf8");
+const dealAnalyticsHardeningMigration = readFileSync(new URL("../supabase/migrations/202606050004_harden_venue_deals_analytics.sql", import.meta.url), "utf8");
 
 const forbiddenPatterns = [
   [/\bvar\s+BAR_UPDATES\b/, "BAR_UPDATES must not exist as production state"],
@@ -75,6 +79,38 @@ if (!/Promoted/.test(dealRenderer)) {
 
 if (/crowd_level|wait_minutes|live_status/.test(dealRenderer)) {
   failures.push("deal rendering must not read or mutate live status fields directly");
+}
+
+if (!/isDealCurrent/.test(dealController)) {
+  failures.push("deal controller should reject expired, future, inactive, or malformed deal rows before rendering");
+}
+
+if (!/\.lte\("starts_at",\s*now\)/.test(dealService) || !/\.gt\("ends_at",\s*now\)/.test(dealService)) {
+  failures.push("deal service should only load currently displayable deal windows");
+}
+
+if (!/enable row level security/.test(dealMigration) || !/create policy "Active current venue deals are publicly readable"/.test(dealMigration)) {
+  failures.push("venue deal tables must enable RLS and keep public reads limited to active current deals");
+}
+
+if (!/private\.venue_has_deal_plan/.test(dealMigration) || !/private\.can_promote_venue_deal/.test(dealMigration)) {
+  failures.push("venue deal write paths must enforce subscription/plan gating helpers");
+}
+
+if (!/grant select on public\.venue_deals to anon, authenticated/.test(dealGrantMigration) || !/grant insert, update on public\.venue_deals to authenticated/.test(dealGrantMigration) || !/grant insert on public\.venue_analytics_events/.test(dealGrantMigration)) {
+  failures.push("deal API grants should expose only the intended venue deal and analytics operations");
+}
+
+if (/grant\s+update\s+on\s+public\.venue_analytics_events/i.test(dealGrantMigration) || /grant\s+delete\s+on\s+public\.venue_analytics_events/i.test(dealGrantMigration)) {
+  failures.push("venue analytics events must stay append-only through API grants");
+}
+
+if (!/grant execute on function private\.can_manage_venue\(text\) to anon/.test(dealPolicyGrantMigration) || !/grant execute on function private\.can_manage_venue\(text\) to anon, authenticated/.test(dealAnalyticsHardeningMigration)) {
+  failures.push("public deal read policy helper should remain callable without breaking anonymous reads");
+}
+
+if (!/analytics_deal_matches_venue/.test(dealAnalyticsHardeningMigration) || !/deal_id, venue_id/.test(dealAnalyticsHardeningMigration)) {
+  failures.push("analytics hardening should prevent cross-venue deal attribution");
 }
 
 function walk(dir) {
