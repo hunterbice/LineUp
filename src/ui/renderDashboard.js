@@ -7,12 +7,13 @@ export function renderBarCard(bar, helpers) {
   const signal = helpers.signalState(bar);
   const confirmed = bar.backend ? "Live source" : "Typical read";
   const action = bar.wait > 20 ? "Check before you go" : bar.lvl === "packed" ? "Expect a crowd" : bar.lvl === "busy" ? "Good energy now" : "Easy move";
+  const dealBadge = helpers.renderDealBadge ? helpers.renderDealBadge(helpers.deal || null) : "";
   return '<article class="barcard" data-id="' + bar.id + '"><div class="cardtop">' +
     helpers.logo(bar) +
     '<div class="grow"><div class="name">' + esc(bar.name) + '</div><div class="tag">' + esc(bar.tag) + '</div><div class="close ' +
     (close.indexOf("Closing") === 0 ? "closing" : close.indexOf("Closed") === 0 ? "closed" : "") + '">' + esc(close) + '</div></div><button class="fav ' +
     (fav ? "on" : "") + '" data-fav="' + bar.id + '" aria-label="Favorite ' + esc(bar.name) + '">' + (fav ? helpers.svg.starFull : helpers.svg.starEmpty) + '</button></div><div class="statusline"><span class="statuspill" style="color:' +
-    helpers.colors[bar.lvl] + '">' + level.label + '</span><span>' + esc(confirmed) + '</span><span>' + esc(signal.detail) + '</span></div><div class="statgrid"><div><div class="bigstat" style="color:' +
+    helpers.colors[bar.lvl] + '">' + level.label + '</span><span>' + esc(confirmed) + '</span><span>' + esc(signal.detail) + '</span></div>' + dealBadge + '<div class="statgrid"><div><div class="bigstat" style="color:' +
     helpers.colors[bar.lvl] + '">' + level.label + '</div><span class="smallcap">' + esc(bar.momentum.replace("_", " ")) + '</span></div><div class="right"><div class="bigstat">' +
     (bar.wait ? bar.wait + " min" : "No line") + '</div><span class="smallcap">est. line</span></div></div><div class="range"><em>Likely</em> ' +
     level.range + '</div><div class="energy"><div style="width:' + level.pct + '%;background:' + helpers.colors[bar.lvl] + ';color:' +
@@ -36,7 +37,7 @@ export function renderLiveDashboard({ list, pulse, svg, renderBar }) {
   return renderRetentionDashboard({ list, favorites: [], recents: [], pulse, svg, renderBar });
 }
 
-export function renderRetentionDashboard({ list, favorites, recents, pulse, svg, renderBar }) {
+export function renderRetentionDashboard({ list, favorites, recents, pulse, svg, renderBar, dealSection }) {
   const all = Array.isArray(list) ? list : [];
   const favoriteList = Array.isArray(favorites) ? favorites : [];
   const recentList = (Array.isArray(recents) ? recents : []).filter((bar) => !favoriteList.some((fav) => fav.id === bar.id));
@@ -47,7 +48,7 @@ export function renderRetentionDashboard({ list, favorites, recents, pulse, svg,
     renderSection("Recently checked", recentList, renderBar, ""),
     renderSection("All nearby spots", remaining.length ? remaining : all, renderBar, ""),
   ].join("") : '<div class="emptyState"><b>No venues loaded yet</b><p>LineUp is waiting on the live venue feed. Try refreshing in a moment.</p><button onclick="location.reload()">Refresh</button></div>';
-  return `<div class="dashboardIntro"><h2>Where are you going tonight?</h2><p>Check the scene before you head out.</p></div><div class="pulsecard" onclick="setPage('highlightsPage')"><div class="pulseicon">${svg.pulseTrend}</div><div><b>${esc(pulse.title)}</b><span>${esc(pulse.meta)}</span></div><div class="chev"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2"><polyline points="9 18 15 12 9 6"/></svg></div></div>` + cards;
+  return `<div class="dashboardIntro"><h2>Where are you going tonight?</h2><p>Check the scene before you head out.</p></div><div class="pulsecard" onclick="setPage('highlightsPage')"><div class="pulseicon">${svg.pulseTrend}</div><div><b>${esc(pulse.title)}</b><span>${esc(pulse.meta)}</span></div><div class="chev"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2"><polyline points="9 18 15 12 9 6"/></svg></div></div>` + (dealSection || "") + cards;
 }
 
 function renderSection(title, bars, renderBar, emptyHtml) {

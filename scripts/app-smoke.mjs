@@ -52,6 +52,37 @@ async function main() {
       if (/Failed to load resource: the server responded with a status of 401/.test(text)) return;
       errors.push(text);
     });
+    const now = Date.now();
+    const smokeDeals = [
+      {
+        id: "11111111-1111-4111-8111-111111111111",
+        venue_id: "bens",
+        title: "No cover before 10",
+        description: "Venue posted special for smoke testing",
+        deal_type: "cover",
+        starts_at: new Date(now - 60 * 60 * 1000).toISOString(),
+        ends_at: new Date(now + 4 * 60 * 60 * 1000).toISOString(),
+        is_active: true,
+        is_promoted: true,
+        promotion_tier: "boost",
+        created_by: null,
+        created_at: new Date(now - 60 * 60 * 1000).toISOString(),
+        updated_at: new Date(now - 60 * 60 * 1000).toISOString(),
+      },
+    ];
+    await page.addInitScript((deals) => {
+      window.LINEUP_TEST_DEALS = deals;
+    }, smokeDeals);
+    await page.route("**/*venue_deals*", async (route) => {
+      if (route.request().method() === "GET") {
+        await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(smokeDeals) });
+        return;
+      }
+      await route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify(smokeDeals[0]) });
+    });
+    await page.route("**/*venue_analytics_events*", async (route) => {
+      await route.fulfill({ status: 201, contentType: "application/json", body: "[]" });
+    });
 
     await page.goto(baseUrl, { waitUntil: "networkidle" });
     await page.waitForSelector(".accountGate");
@@ -66,6 +97,8 @@ async function main() {
     await page.locator(".setupGate button", { hasText: "Finish Setup" }).click();
     await page.waitForSelector("#livePage.active");
     await page.waitForSelector(".barcard .statusline");
+    await page.locator(".sectionlabel", { hasText: "TONIGHT’S DEALS" }).waitFor();
+    await page.locator(".dealCard", { hasText: "Promoted" }).waitFor();
     await page.locator(".emptyState", { hasText: "No favorite spots yet" }).waitFor();
     await page.evaluate(() => localStorage.setItem("lineup_recent_venues", JSON.stringify([{ venueId: "stale_missing_venue", viewedAt: Date.now() }])));
     await page.reload({ waitUntil: "networkidle" });
@@ -83,6 +116,11 @@ async function main() {
       throw new Error("Recent venue cache should contain only venueId/viewedAt");
     }
     await page.locator(".sectionlabel", { hasText: "Recently checked" }).waitFor();
+    await page.locator(".dealCard").first().click();
+    await page.waitForSelector("#detail.open");
+    await page.locator(".dealDetailCard", { hasText: "No cover before 10" }).waitFor();
+    await page.locator("button[onclick='closeDetail()']").click();
+    await page.waitForSelector("#detail:not(.open)");
     await page.locator(".barcard").first().click();
     await page.waitForSelector("#detail.open");
     await page.locator(".tabs2 button", { hasText: "Intel" }).click();

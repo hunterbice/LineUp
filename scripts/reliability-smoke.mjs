@@ -5,9 +5,11 @@ import { createBarDetailController } from "../src/controllers/barDetailControlle
 import { createOwnerController } from "../src/controllers/ownerController.js";
 import { createReportController } from "../src/controllers/reportController.js";
 import { hydrateVenues } from "../src/controllers/retentionController.js";
+import { groupDealsByVenue, selectDashboardDeals } from "../src/controllers/dealController.js";
 import { createVenueStaffController } from "../src/controllers/venueStaffController.js";
 import { renderDetailHtml, renderReportRows } from "../src/ui/renderBarDetail.js";
 import { renderRetentionDashboard } from "../src/ui/renderDashboard.js";
+import { renderDealBadge, renderDealSection, renderVenueDealBlock } from "../src/ui/renderDeals.js";
 import { fallbackMapHtml } from "../src/ui/renderMap.js";
 import { renderOwnerDashboardHtml } from "../src/ui/renderOwnerDashboard.js";
 import { renderProfilePageHtml } from "../src/ui/renderProfile.js";
@@ -45,8 +47,14 @@ ordered(main, [/ownerAction\("venue_live_update"/, /loadSupabaseStatus\(\)/, /ow
 ordered(main, [/ownerAction\("set_venue_status"/, /loadSupabaseStatus\(\)/, /ownerRequest\(\)/], "owner status flow");
 assert.doesNotMatch(main, /Local update saved|saved locally/, "staff/report UI should not claim local mutation");
 assert.equal(sw, publicSw, "public service worker must match root service worker");
-assert.equal(config.match(/APP_VERSION\s*=\s*"([^"]+)"/)?.[1], "v64", "APP_VERSION should be v64");
-assert.match(sw, /lineup-pwa-v64/, "service worker should be v64");
+assert.equal(config.match(/APP_VERSION\s*=\s*"([^"]+)"/)?.[1], "v65", "APP_VERSION should be v65");
+assert.match(sw, /lineup-pwa-v65/, "service worker should be v65");
+
+const dealServiceSource = fs.readFileSync(path.join(root, "src/services/venueDealService.js"), "utf8");
+const dealRendererSource = fs.readFileSync(path.join(root, "src/ui/renderDeals.js"), "utf8");
+assert.doesNotMatch(dealServiceSource, /live_status|crowd_level|wait_minutes|confidence_score/, "deal service must not mutate live status truth");
+assert.doesNotMatch(dealRendererSource, /localStorage|live_status|crowd_level|wait_minutes/, "deal renderer must not touch local/status truth");
+assert.match(dealRendererSource, /Promoted/, "promoted placement should be labeled");
 
 let calls = [];
 const barController = createBarDetailController({
@@ -95,6 +103,22 @@ const dashboardHtml = renderRetentionDashboard({
 assert.match(dashboardHtml, /Your spots/, "dashboard should render favorites section");
 assert.match(dashboardHtml, /Recently checked/, "dashboard should render recents section");
 assert.match(dashboardHtml, /All nearby spots/, "dashboard should render all nearby section");
+
+const activeDeals = [
+  { id: "promoted", venueId: "fresh", title: "No cover before 10", description: "Tonight only", dealType: "cover", startsAt: new Date(Date.now() - 60000).toISOString(), endsAt: new Date(Date.now() + 3600000).toISOString(), isActive: true, isPromoted: true, promotionTier: "boost" },
+  { id: "standard", venueId: "other", title: "$3 wells", description: "", dealType: "deal", startsAt: new Date(Date.now() - 60000).toISOString(), endsAt: new Date(Date.now() + 3600000).toISOString(), isActive: true, isPromoted: false, promotionTier: "standard" },
+  { id: "missing", venueId: "missing", title: "Ghost", description: "", dealType: "deal", startsAt: new Date().toISOString(), endsAt: new Date(Date.now() + 3600000).toISOString(), isActive: true, isPromoted: true, promotionTier: "boost" },
+];
+const groupedDeals = groupDealsByVenue(activeDeals);
+assert.equal(groupedDeals.fresh[0].id, "promoted", "deals should group by venue without touching venue objects");
+const selectedDeals = selectDashboardDeals({ deals: activeDeals, venues: backendVenues, favorites: [backendVenues[1]], recents: [] });
+assert.deepEqual(selectedDeals.map((deal) => deal.id), ["promoted", "standard"], "dashboard deals should hydrate against backend venues and exclude missing venues");
+const originalVenue = structuredClone(backendVenues[0]);
+const dealHtml = renderDealSection({ deals: selectedDeals, venuesById: { fresh: backendVenues[0], other: backendVenues[1] }, signalState: () => ({ label: "Fresh staff update", detail: "Updated now" }) });
+assert.match(dealHtml, /Promoted/, "promoted deal card should be labeled");
+assert.match(renderDealBadge(activeDeals[1]), /\$3 wells/, "venue cards should show small active deal badges");
+assert.match(renderVenueDealBlock([activeDeals[0]]), /Venue posted/, "detail deal block should label venue-posted marketing");
+assert.deepEqual(backendVenues[0], originalVenue, "deal rendering must not mutate backend venue live status");
 
 calls = [];
 const reportController = createReportController({

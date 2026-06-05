@@ -7,6 +7,9 @@ const main = readFileSync(new URL("../src/main.js", import.meta.url), "utf8");
 const cacheState = readFileSync(new URL("../src/state/cacheState.js", import.meta.url), "utf8");
 const appState = readFileSync(new URL("../src/state/appState.js", import.meta.url), "utf8");
 const navigationController = readFileSync(new URL("../src/controllers/navigationController.js", import.meta.url), "utf8");
+const dealService = readFileSync(new URL("../src/services/venueDealService.js", import.meta.url), "utf8");
+const dealController = readFileSync(new URL("../src/controllers/dealController.js", import.meta.url), "utf8");
+const dealRenderer = readFileSync(new URL("../src/ui/renderDeals.js", import.meta.url), "utf8");
 
 const forbiddenPatterns = [
   [/\bvar\s+BAR_UPDATES\b/, "BAR_UPDATES must not exist as production state"],
@@ -56,6 +59,22 @@ if (!/backend:\s*\{[\s\S]*venues/.test(appState) || !/ui:\s*\{[\s\S]*activePage/
 
 if (!/export function selectPage/.test(navigationController) || !/export function selectArea/.test(navigationController)) {
   failures.push("navigation controller should own page and area selection helpers");
+}
+
+if (!/venue_deals/.test(dealService) || /live_status/.test(dealService) || /crowd_level|wait_minutes|confidence_score/.test(dealService)) {
+  failures.push("venueDealService should read/write venue_deals only, not venue live status truth");
+}
+
+if (/localStorage\./.test(dealService + dealController + dealRenderer)) {
+  failures.push("deal modules must not persist full deal/status truth to localStorage");
+}
+
+if (!/Promoted/.test(dealRenderer)) {
+  failures.push("promoted deal rendering must clearly label paid placement");
+}
+
+if (/crowd_level|wait_minutes|live_status/.test(dealRenderer)) {
+  failures.push("deal rendering must not read or mutate live status fields directly");
 }
 
 function walk(dir) {
