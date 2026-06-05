@@ -66,6 +66,23 @@ async function main() {
     await page.locator(".setupGate button", { hasText: "Finish Setup" }).click();
     await page.waitForSelector("#livePage.active");
     await page.waitForSelector(".barcard .statusline");
+    await page.locator(".emptyState", { hasText: "No favorite spots yet" }).waitFor();
+    await page.evaluate(() => localStorage.setItem("lineup_recent_venues", JSON.stringify([{ venueId: "stale_missing_venue", viewedAt: Date.now() }])));
+    await page.reload({ waitUntil: "networkidle" });
+    await page.waitForSelector("#livePage.active");
+    await page.locator(".emptyState", { hasText: "No favorite spots yet" }).waitFor();
+    await page.locator(".fav").first().click();
+    await page.locator(".sectionlabel", { hasText: "Your spots" }).waitFor();
+    await page.waitForSelector(".barcard .fav.on");
+    await page.locator(".barcard").nth(1).click();
+    await page.waitForSelector("#detail.open");
+    await page.locator("button[onclick='closeDetail()']").click();
+    await page.waitForSelector("#detail:not(.open)");
+    const recentCache = await page.evaluate(() => JSON.parse(localStorage.getItem("lineup_recent_venues") || "[]"));
+    if (!recentCache[0] || !recentCache[0].venueId || !recentCache[0].viewedAt || Object.keys(recentCache[0]).some((key) => /status|crowd|wait|report|live/i.test(key))) {
+      throw new Error("Recent venue cache should contain only venueId/viewedAt");
+    }
+    await page.locator(".sectionlabel", { hasText: "Recently checked" }).waitFor();
     await page.locator(".barcard").first().click();
     await page.waitForSelector("#detail.open");
     await page.locator(".tabs2 button", { hasText: "Intel" }).click();

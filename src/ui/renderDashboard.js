@@ -33,6 +33,24 @@ export function areaPulseCopy({ list, area, areaName, isFavorite }) {
 }
 
 export function renderLiveDashboard({ list, pulse, svg, renderBar }) {
-  const cards = list.length ? list.map(renderBar).join("") : '<div class="emptyState"><b>No venues loaded yet</b><p>LineUp is waiting on the live venue feed. Try refreshing in a moment.</p><button onclick="location.reload()">Refresh</button></div>';
-  return `<div class="pulsecard" onclick="setPage('highlightsPage')"><div class="pulseicon">${svg.pulseTrend}</div><div><b>${esc(pulse.title)}</b><span>${esc(pulse.meta)}</span></div><div class="chev"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2"><polyline points="9 18 15 12 9 6"/></svg></div></div><div class="sectionlabel">LIVE BAR STATUS</div>` + cards;
+  return renderRetentionDashboard({ list, favorites: [], recents: [], pulse, svg, renderBar });
+}
+
+export function renderRetentionDashboard({ list, favorites, recents, pulse, svg, renderBar }) {
+  const all = Array.isArray(list) ? list : [];
+  const favoriteList = Array.isArray(favorites) ? favorites : [];
+  const recentList = (Array.isArray(recents) ? recents : []).filter((bar) => !favoriteList.some((fav) => fav.id === bar.id));
+  const featuredIds = new Set(favoriteList.concat(recentList).map((bar) => bar.id));
+  const remaining = all.filter((bar) => !featuredIds.has(bar.id));
+  const cards = all.length ? [
+    renderSection("Your spots", favoriteList, renderBar, '<div class="emptyState retentionPrompt"><b>No favorite spots yet</b><p>Tap the star on a spot to pin it here for faster checks later.</p></div>'),
+    renderSection("Recently checked", recentList, renderBar, ""),
+    renderSection("All nearby spots", remaining.length ? remaining : all, renderBar, ""),
+  ].join("") : '<div class="emptyState"><b>No venues loaded yet</b><p>LineUp is waiting on the live venue feed. Try refreshing in a moment.</p><button onclick="location.reload()">Refresh</button></div>';
+  return `<div class="dashboardIntro"><h2>Where are you going tonight?</h2><p>Check the scene before you head out.</p></div><div class="pulsecard" onclick="setPage('highlightsPage')"><div class="pulseicon">${svg.pulseTrend}</div><div><b>${esc(pulse.title)}</b><span>${esc(pulse.meta)}</span></div><div class="chev"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2"><polyline points="9 18 15 12 9 6"/></svg></div></div>` + cards;
+}
+
+function renderSection(title, bars, renderBar, emptyHtml) {
+  if (!bars.length) return emptyHtml || "";
+  return '<div class="sectionlabel">' + esc(title) + '</div>' + bars.map(renderBar).join("");
 }

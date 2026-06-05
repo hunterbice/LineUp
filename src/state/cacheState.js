@@ -54,6 +54,21 @@ export function setActivityLog(value) { return writeJson("lineup_activity_log", 
 export function getFavorites() { return readJson("lineup_favorites", []); }
 export function setFavorites(value) { return writeJson("lineup_favorites", value); }
 
+export function getRecentVenues() {
+  return readJson("lineup_recent_venues", [])
+    .filter((entry) => entry && typeof entry.venueId === "string" && Number.isFinite(Number(entry.viewedAt)))
+    .map((entry) => ({ venueId: entry.venueId, viewedAt: Number(entry.viewedAt) }))
+    .slice(0, 5);
+}
+export function saveRecentVenue(venueId) {
+  if (typeof venueId !== "string" || !venueId.trim()) return getRecentVenues();
+  const next = [{ venueId: venueId.trim(), viewedAt: Date.now() }]
+    .concat(getRecentVenues().filter((entry) => entry.venueId !== venueId.trim()))
+    .slice(0, 5);
+  return writeJson("lineup_recent_venues", next);
+}
+export function clearRecentVenues() { localStorage.removeItem("lineup_recent_venues"); }
+
 export function getArea() { return localStorage.getItem("lineup_area") || "main_gate"; }
 export function setArea(value) { localStorage.setItem("lineup_area", value); return value; }
 

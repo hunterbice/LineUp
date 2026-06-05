@@ -4,8 +4,10 @@ import assert from "node:assert/strict";
 import { createBarDetailController } from "../src/controllers/barDetailController.js";
 import { createOwnerController } from "../src/controllers/ownerController.js";
 import { createReportController } from "../src/controllers/reportController.js";
+import { hydrateVenues } from "../src/controllers/retentionController.js";
 import { createVenueStaffController } from "../src/controllers/venueStaffController.js";
 import { renderDetailHtml, renderReportRows } from "../src/ui/renderBarDetail.js";
+import { renderRetentionDashboard } from "../src/ui/renderDashboard.js";
 import { fallbackMapHtml } from "../src/ui/renderMap.js";
 import { renderOwnerDashboardHtml } from "../src/ui/renderOwnerDashboard.js";
 import { renderProfilePageHtml } from "../src/ui/renderProfile.js";
@@ -30,6 +32,11 @@ function ordered(source, patterns, label) {
 
 assert.match(cacheState, /removeItem\("lineup_bar_updates"\)/, "legacy venue overrides must be cleared");
 assert.match(cacheState, /removeItem\("lineup_local_reports"\)/, "legacy local reports must be cleared");
+assert.match(cacheState, /lineup_recent_venues/, "recent venues should use a dedicated cache key");
+assert.match(cacheState, /venueId/, "recent venue cache should store venue IDs");
+assert.match(cacheState, /viewedAt/, "recent venue cache should store timestamps");
+const recentCacheBlock = cacheState.match(/export function getRecentVenues[\s\S]*?export function getArea/)?.[0] || "";
+assert.doesNotMatch(recentCacheBlock, /\b(status|crowd|crowd_level|wait|wait_minutes|report|reports|live_status|confidence)\b/, "recent venue cache must not store live status fields");
 assert.doesNotMatch(main, /lineup_bar_updates|lineup_local_reports/, "main must not read legacy local source-of-truth keys");
 assert.match(main, /syncReportToSupabase\(bar,patch,note,false\)/, "normal reports must use backend ingest");
 ordered(main, [/syncReportToSupabase\(bar,patch,note,false\)/, /loadVenueReports\(bar\.id\)/, /loadSupabaseStatus\(\)/], "report flow");
@@ -38,8 +45,8 @@ ordered(main, [/ownerAction\("venue_live_update"/, /loadSupabaseStatus\(\)/, /ow
 ordered(main, [/ownerAction\("set_venue_status"/, /loadSupabaseStatus\(\)/, /ownerRequest\(\)/], "owner status flow");
 assert.doesNotMatch(main, /Local update saved|saved locally/, "staff/report UI should not claim local mutation");
 assert.equal(sw, publicSw, "public service worker must match root service worker");
-assert.equal(config.match(/APP_VERSION\s*=\s*"([^"]+)"/)?.[1], "v63", "APP_VERSION should be v63");
-assert.match(sw, /lineup-pwa-v63/, "service worker should be v63");
+assert.equal(config.match(/APP_VERSION\s*=\s*"([^"]+)"/)?.[1], "v64", "APP_VERSION should be v64");
+assert.match(sw, /lineup-pwa-v64/, "service worker should be v64");
 
 let calls = [];
 const barController = createBarDetailController({
@@ -57,6 +64,37 @@ const barController = createBarDetailController({
 });
 barController.open("missing");
 assert.deepEqual(calls, ["toast"], "missing detail venue should not open or mutate detail state");
+
+calls = [];
+const detailVenue = { id: "venue_1", area: "main_gate" };
+const detailController = createBarDetailController({
+  findVenue: () => detailVenue,
+  saveRecentVenue: (id) => calls.push(`recent:${id}`),
+  setCurrentVenue: () => calls.push("set"),
+  trackAppEvent: () => calls.push("track"),
+  activePage: () => "livePage",
+  loadVenueReports: () => Promise.resolve(),
+  renderDetail: () => calls.push("render"),
+  openDetailSheet: () => calls.push("open"),
+  showToast: () => calls.push("toast"),
+});
+detailController.open("venue_1");
+assert.deepEqual(calls, ["set", "recent:venue_1", "track", "render", "open"], "detail open should save only the recent venue ID after venue validation");
+
+const backendVenues = [{ id: "fresh", name: "Fresh backend venue", lvl: "busy" }, { id: "other", name: "Other venue", lvl: "slow" }];
+const hydrated = hydrateVenues([{ venueId: "missing", viewedAt: 1 }, { venueId: "other", viewedAt: 2 }], backendVenues);
+assert.deepEqual(hydrated, [backendVenues[1]], "recents should hydrate from current backend venues and ignore stale IDs");
+const dashboardHtml = renderRetentionDashboard({
+  list: backendVenues,
+  favorites: [backendVenues[0]],
+  recents: hydrated,
+  pulse: { title: "Tonight", meta: "Live" },
+  svg: { pulseTrend: "" },
+  renderBar: (bar) => `<article class="barcard" data-id="${bar.id}">${bar.name}</article>`,
+});
+assert.match(dashboardHtml, /Your spots/, "dashboard should render favorites section");
+assert.match(dashboardHtml, /Recently checked/, "dashboard should render recents section");
+assert.match(dashboardHtml, /All nearby spots/, "dashboard should render all nearby section");
 
 calls = [];
 const reportController = createReportController({

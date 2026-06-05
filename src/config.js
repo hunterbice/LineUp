@@ -1,6 +1,6 @@
 import * as cacheState from "./state/cacheState.js";
 
-export const APP_VERSION = "v63";
+export const APP_VERSION = "v64";
 export const SUPABASE_URL = "https://bxngqqsxthybjikmwvqj.supabase.co";
 export const SUPABASE_KEY = "sb_publishable_p8UHXd9c1vSrELkupjdqfw_4-O3eQKF";
 export const ACTIVE_STATUS_SELECT = "id,area,status,deprecated,name,tag,address,map_query,lat,lng,scenes,logo_key,open_hour,close_hour,last_call,line_leap_url,event,crowd_level,wait_minutes,confidence,confidence_score,confidence_signal_count,momentum,cover_amount,cover_active,sources,fresh_at,status_updated_at";

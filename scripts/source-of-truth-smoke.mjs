@@ -29,6 +29,19 @@ if (!/localStorage\.removeItem\("lineup_bar_updates"\)/.test(cacheState)) {
   failures.push("old lineup_bar_updates cache should be cleared by cacheState");
 }
 
+if (!/getRecentVenues/.test(cacheState) || !/saveRecentVenue/.test(cacheState)) {
+  failures.push("recent venue cache helpers should live in cacheState.js");
+}
+
+if (!/lineup_recent_venues/.test(cacheState) || !/venueId/.test(cacheState) || !/viewedAt/.test(cacheState)) {
+  failures.push("recent venue cache should store venueId/viewedAt references only");
+}
+
+const recentCacheBlock = cacheState.match(/export function getRecentVenues[\s\S]*?export function getArea/)?.[0] || "";
+if (/\b(status|crowd|crowd_level|wait|wait_minutes|report|reports|live_status|confidence)\b/.test(recentCacheBlock)) {
+  failures.push("recent venue cache must not store live venue truth fields");
+}
+
 if (!/await loadSupabaseStatus\(\)/.test(main)) {
   failures.push("report submission should refresh backend-confirmed venue status");
 }

@@ -7,6 +7,7 @@ export function createBarDetailController(deps) {
         return;
       }
       deps.setCurrentVenue(venue, "live");
+      if (deps.saveRecentVenue) deps.saveRecentVenue(id);
       deps.trackAppEvent(id, "detail_view", { area: venue.area, page: deps.activePage() });
       const reportLoad = deps.loadVenueReports(id);
       if (reportLoad && reportLoad.catch) reportLoad.catch(function(){});
