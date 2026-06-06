@@ -38,7 +38,7 @@ function metric(label, value) {
 function performanceEmptyCopy(state) {
   if (state && state.loading) return "Loading deal performance...";
   if (state && state.error) return state.error;
-  return "No deal performance yet. Post a deal to start tracking views and taps.";
+  return "Post tonight's deal to start tracking student interest.";
 }
 
 function localDateTime(value, offsetHours) {
@@ -94,9 +94,11 @@ export function renderDealEditor({ bar, deal, subscription, prefix, isOwner }) {
   return '<div class="dealEditor">' +
     '<div class="sectionlabel">TONIGHT DEAL</div>' +
     '<input type="hidden" id="' + prefix + 'DealId" value="' + esc(deal && deal.id || "") + '">' +
-    '<div class="dealPlan"><b>' + esc((sub.plan || "free").toUpperCase()) + ' plan</b><span>' + (canPost ? 'Deal posting enabled.' : 'Upgrade plan required for staff-posted deals.') + '</span></div>' +
+    '<div class="dealPlan"><b>Post tonight\'s deal or event</b><span>' + (canPost ? 'Students see it while choosing where to go.' : 'Deal posting is not enabled for this venue yet.') + '</span></div>' +
+    (!deal ? '<div class="dealTips"><b>Post tonight\'s deal to start tracking student interest.</b><span>Add a short title, set start/end time, keep it specific, and update it before peak hours.</span></div>' : '') +
     '<label class="fieldLabel">Title</label><input class="field" id="' + prefix + 'DealTitle" value="' + esc(deal && deal.title || "") + '" maxlength="80" placeholder="No cover before 10">' +
-    '<label class="fieldLabel">Description</label><textarea class="field" id="' + prefix + 'DealDescription" maxlength="240" placeholder="Short detail students can scan fast">' + esc(deal && deal.description || "") + '</textarea>' +
+    '<div class="dealExamples">Examples: No cover before 10 · $3 wells tonight · DJ starts at 10:30 · Game day special</div>' +
+    '<label class="fieldLabel">Description</label><textarea class="field" id="' + prefix + 'DealDescription" maxlength="240" placeholder="Keep it short — students are deciding fast.">' + esc(deal && deal.description || "") + '</textarea>' +
     '<div class="adminMini"><select class="field" id="' + prefix + 'DealType">' +
       ["deal", "event", "cover", "happy_hour", "special"].map(function(type) { return '<option value="' + type + '" ' + (deal && deal.dealType === type ? "selected" : "") + '>' + esc(dealTypeLabel(type)) + '</option>'; }).join("") +
     '</select><select class="field" id="' + prefix + 'DealTier" ' + (!canPromote ? "disabled" : "") + '>' +
@@ -107,7 +109,7 @@ export function renderDealEditor({ bar, deal, subscription, prefix, isOwner }) {
     '<label class="toggleLine ' + (!canPromote ? "disabled" : "") + '"><input id="' + prefix + 'DealPromoted" type="checkbox" ' + (deal && deal.isPromoted ? "checked" : "") + ' ' + (!canPromote ? "disabled" : "") + '> Promoted placement</label>' +
     '<div class="sheetActions"><button class="submit" onclick="saveVenueDeal(&quot;' + esc(bar.id) + '&quot;,&quot;' + esc(prefix) + '&quot;)" ' + (!canPost && !isOwner ? "disabled" : "") + '>Save Deal</button>' +
     (deal ? '<button class="secondaryBtn" onclick="deactivateVenueDeal(&quot;' + esc(deal.id) + '&quot;)">Deactivate</button>' : '') + '</div>' +
-    '<p class="rewardFine">Deals are venue-posted marketing. They never change crowd level, wait time, or confidence scoring.</p>' +
+    '<p class="rewardFine">Promoted deals can increase visibility, but crowd level, wait time, and confidence stay based on live status and reports.</p>' +
     '</div>';
 }
 
@@ -116,7 +118,7 @@ export function renderDealPerformance({ rows, loading, error }) {
   if (loading || error || !rows.length) {
     return '<div class="dealPerformance">' +
       '<div class="sectionlabel">DEAL PERFORMANCE</div>' +
-      '<div class="dealPerfEmpty"><b>Deal performance</b><p>' + esc(performanceEmptyCopy({ loading, error })) + '</p></div>' +
+      '<div class="dealPerfEmpty"><b>Track views, taps, and venue opens</b><p>' + esc(performanceEmptyCopy({ loading, error })) + '</p></div>' +
       '</div>';
   }
   return '<div class="dealPerformance">' +
@@ -142,7 +144,7 @@ export function renderDealPerformance({ rows, loading, error }) {
         '</div></div>' +
       '</div>';
     }).join("") +
-    '<p class="rewardFine">Deal performance is aggregate-only. It never changes crowd level, wait time, or confidence scoring.</p>' +
+    '<p class="rewardFine">Performance shows student interest in the deal. Live status stays separate from paid promotions.</p>' +
     '</div>';
 }
 

@@ -11,7 +11,7 @@ import { venueAnalyticsTestHooks } from "../src/services/venueAnalyticsService.j
 import { venueDealTestHooks } from "../src/services/venueDealService.js";
 import { renderDetailHtml, renderReportRows } from "../src/ui/renderBarDetail.js";
 import { renderRetentionDashboard } from "../src/ui/renderDashboard.js";
-import { renderDealBadge, renderDealPerformance, renderDealSection, renderVenueDealBlock } from "../src/ui/renderDeals.js";
+import { renderDealBadge, renderDealEditor, renderDealPerformance, renderDealSection, renderVenueDealBlock } from "../src/ui/renderDeals.js";
 import { fallbackMapHtml } from "../src/ui/renderMap.js";
 import { renderOwnerDashboardHtml } from "../src/ui/renderOwnerDashboard.js";
 import { renderProfilePageHtml } from "../src/ui/renderProfile.js";
@@ -49,8 +49,8 @@ ordered(main, [/ownerAction\("venue_live_update"/, /loadSupabaseStatus\(\)/, /ow
 ordered(main, [/ownerAction\("set_venue_status"/, /loadSupabaseStatus\(\)/, /ownerRequest\(\)/], "owner status flow");
 assert.doesNotMatch(main, /Local update saved|saved locally/, "staff/report UI should not claim local mutation");
 assert.equal(sw, publicSw, "public service worker must match root service worker");
-assert.equal(config.match(/APP_VERSION\s*=\s*"([^"]+)"/)?.[1], "v67", "APP_VERSION should be v67");
-assert.match(sw, /lineup-pwa-v67/, "service worker should be v67");
+assert.equal(config.match(/APP_VERSION\s*=\s*"([^"]+)"/)?.[1], "v68", "APP_VERSION should be v68");
+assert.match(sw, /lineup-pwa-v68/, "service worker should be v68");
 
 const dealServiceSource = fs.readFileSync(path.join(root, "src/services/venueDealService.js"), "utf8");
 const dealRendererSource = fs.readFileSync(path.join(root, "src/ui/renderDeals.js"), "utf8");
@@ -181,8 +181,44 @@ const performanceHtml = renderDealPerformance({ rows: [normalizedPerformance], l
 assert.match(performanceHtml, /Deal performance/i, "staff and owner surfaces should render deal performance");
 assert.match(performanceHtml, /Views/, "deal performance should use bar-owner language");
 assert.match(performanceHtml, /Tap rate/, "deal performance should show 7-day tap rate");
-assert.match(renderDealPerformance({ rows: [], loading: false, error: "" }), /No deal performance yet/, "empty performance state should be friendly");
+assert.match(renderDealPerformance({ rows: [], loading: false, error: "" }), /Post tonight&#39;s deal to start tracking student interest/, "empty performance state should be venue-friendly");
 assert.match(renderDealPerformance({ rows: [], loading: false, error: "Performance data is unavailable right now." }), /Performance data is unavailable right now/, "performance errors should render without crashing");
+const emptyDealEditorHtml = renderDealEditor({
+  bar: { id: "fresh", name: "Fresh backend venue" },
+  deal: null,
+  subscription: { plan: "pro", status: "active" },
+  prefix: "staff",
+  isOwner: false,
+});
+assert.match(emptyDealEditorHtml, /Post tonight's deal to start tracking student interest/, "deal editor should guide venues with no active deal");
+assert.match(emptyDealEditorHtml, /No cover before 10/, "deal editor should include practical title examples");
+assert.match(emptyDealEditorHtml, /\$3 wells tonight/, "deal editor should include drink-special example copy");
+assert.match(emptyDealEditorHtml, /DJ starts at 10:30/, "deal editor should include event example copy");
+assert.match(emptyDealEditorHtml, /Keep it short/, "deal editor should tell venues to keep descriptions short");
+assert.match(emptyDealEditorHtml, /Promoted deals can increase visibility/, "deal editor should include paid-placement trust note");
+const staffVenueHtml = renderVenueControlsForBar({
+  ids: ["fresh"],
+  bar: { id: "fresh", name: "Fresh backend venue", address: "1 University", lvl: "busy", wait: 12, event: "" },
+  levels: { busy: { label: "Busy" }, slow: { label: "Slow" } },
+  logo: () => "",
+  level: () => ({ label: "Busy" }),
+  venueControl: "",
+  dealEditor: emptyDealEditorHtml + renderDealPerformance({ rows: [], loading: false, error: "" }),
+});
+assert.match(staffVenueHtml, /Update what students see tonight/, "staff dashboard should use bar-facing headline copy");
+assert.match(staffVenueHtml, /post tonight's deal or event/i, "staff dashboard should explain deal posting value");
+assert.match(staffVenueHtml, /Publish live status/i, "staff dashboard should use live-status language");
+const ownerVenueHtml = renderOwnerDashboardHtml({
+  data: { summary: {}, active_sessions: [], venue_activity: [], recent_redemptions: [], audit_logs: [] },
+  controlVenues: [{ id: "fresh", name: "Fresh backend venue", status: "active" }],
+  firstVenueId: "fresh",
+  levels: { busy: { label: "Busy" }, slow: { label: "Slow" } },
+  dealEditor: emptyDealEditorHtml + performanceHtml,
+});
+assert.match(ownerVenueHtml, /LineUp Venue Tools/, "owner dashboard should be demo-ready for bars");
+assert.match(ownerVenueHtml, /track views, taps, and venue opens/i, "owner dashboard should explain deal performance value");
+assert.match(ownerVenueHtml, /Live crowd status stays separate from paid promotions/, "owner dashboard should explain promotion separation");
+assert.doesNotMatch(emptyDealEditorHtml + performanceHtml + dealHtml, /\bTrending\b|\bHot\b|\bPacked\b/, "deal and performance copy must not invent popularity from analytics");
 
 calls = [];
 const reportController = createReportController({

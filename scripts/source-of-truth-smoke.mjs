@@ -10,6 +10,8 @@ const navigationController = readFileSync(new URL("../src/controllers/navigation
 const dealService = readFileSync(new URL("../src/services/venueDealService.js", import.meta.url), "utf8");
 const dealController = readFileSync(new URL("../src/controllers/dealController.js", import.meta.url), "utf8");
 const dealRenderer = readFileSync(new URL("../src/ui/renderDeals.js", import.meta.url), "utf8");
+const ownerRenderer = readFileSync(new URL("../src/ui/renderOwnerDashboard.js", import.meta.url), "utf8");
+const staffRenderer = readFileSync(new URL("../src/ui/renderVenueControls.js", import.meta.url), "utf8");
 const dealMigration = readFileSync(new URL("../supabase/migrations/202606050001_venue_deals_marketing_layer.sql", import.meta.url), "utf8");
 const dealGrantMigration = readFileSync(new URL("../supabase/migrations/202606050002_venue_deals_api_grants.sql", import.meta.url), "utf8");
 const dealPolicyGrantMigration = readFileSync(new URL("../supabase/migrations/202606050003_venue_deals_policy_function_grants.sql", import.meta.url), "utf8");
@@ -81,6 +83,18 @@ if (!/Promoted/.test(dealRenderer)) {
 
 if (/crowd_level|wait_minutes|live_status/.test(dealRenderer)) {
   failures.push("deal rendering must not read or mutate live status fields directly");
+}
+
+if (!/Promoted deals can increase visibility/.test(dealRenderer) || !/crowd level, wait time, and confidence stay based on live status and reports/.test(dealRenderer)) {
+  failures.push("deal editor should clearly separate promoted placement from live crowd truth");
+}
+
+if (!/Post tonight's deal to start tracking student interest/.test(dealRenderer) || !/No cover before 10/.test(dealRenderer) || !/\$3 wells tonight/.test(dealRenderer)) {
+  failures.push("deal editor should include venue onboarding and practical static examples");
+}
+
+if (/RPC|metadata|backend-confirmed|RLS|Supabase/.test(dealRenderer + ownerRenderer + staffRenderer)) {
+  failures.push("venue-facing renderers should avoid technical backend language");
 }
 
 if (!/isDealCurrent/.test(dealController)) {
