@@ -11,7 +11,7 @@ import { venueAnalyticsTestHooks } from "../src/services/venueAnalyticsService.j
 import { venueDealTestHooks } from "../src/services/venueDealService.js";
 import { renderDetailHtml, renderReportRows } from "../src/ui/renderBarDetail.js";
 import { renderRetentionDashboard } from "../src/ui/renderDashboard.js";
-import { renderDealBadge, renderDealSection, renderVenueDealBlock } from "../src/ui/renderDeals.js";
+import { renderDealBadge, renderDealPerformance, renderDealSection, renderVenueDealBlock } from "../src/ui/renderDeals.js";
 import { fallbackMapHtml } from "../src/ui/renderMap.js";
 import { renderOwnerDashboardHtml } from "../src/ui/renderOwnerDashboard.js";
 import { renderProfilePageHtml } from "../src/ui/renderProfile.js";
@@ -49,8 +49,8 @@ ordered(main, [/ownerAction\("venue_live_update"/, /loadSupabaseStatus\(\)/, /ow
 ordered(main, [/ownerAction\("set_venue_status"/, /loadSupabaseStatus\(\)/, /ownerRequest\(\)/], "owner status flow");
 assert.doesNotMatch(main, /Local update saved|saved locally/, "staff/report UI should not claim local mutation");
 assert.equal(sw, publicSw, "public service worker must match root service worker");
-assert.equal(config.match(/APP_VERSION\s*=\s*"([^"]+)"/)?.[1], "v66", "APP_VERSION should be v66");
-assert.match(sw, /lineup-pwa-v66/, "service worker should be v66");
+assert.equal(config.match(/APP_VERSION\s*=\s*"([^"]+)"/)?.[1], "v67", "APP_VERSION should be v67");
+assert.match(sw, /lineup-pwa-v67/, "service worker should be v67");
 
 const dealServiceSource = fs.readFileSync(path.join(root, "src/services/venueDealService.js"), "utf8");
 const dealRendererSource = fs.readFileSync(path.join(root, "src/ui/renderDeals.js"), "utf8");
@@ -153,6 +153,36 @@ const sanitizedMetadata = venueAnalyticsTestHooks.sanitizeMetadata({
 });
 assert.deepEqual(Object.keys(sanitizedMetadata).sort(), ["count", "longText", "surface"], "analytics metadata should drop location-like keys");
 assert.equal(sanitizedMetadata.longText.length, 120, "analytics metadata strings should be capped");
+const normalizedPerformance = venueAnalyticsTestHooks.normalizePerformance({
+  venue_id: "fresh",
+  deal_id: "11111111-1111-4111-8111-111111111111",
+  deal_title: "No cover before 10",
+  deal_type: "cover",
+  is_active: true,
+  is_promoted: true,
+  promotion_tier: "boost",
+  starts_at: activeDeals[0].startsAt,
+  ends_at: activeDeals[0].endsAt,
+  impressions_today: 124,
+  taps_today: 18,
+  detail_opens_today: 11,
+  report_opens_today: 3,
+  report_submits_today: 2,
+  favorite_adds_today: 4,
+  impressions_7d: 482,
+  taps_7d: 61,
+  detail_opens_7d: 42,
+  tap_rate_7d: 12.7,
+});
+assert.equal(normalizedPerformance.impressionsToday, 124, "deal performance should normalize aggregate counts");
+assert.equal(normalizedPerformance.tapRate7d, 12.7, "deal performance should normalize aggregate tap rate");
+assert.doesNotMatch(JSON.stringify(normalizedPerformance), /user_id|device_id|lat|lng|location/i, "deal performance must not expose users, devices, or locations");
+const performanceHtml = renderDealPerformance({ rows: [normalizedPerformance], loading: false, error: "" });
+assert.match(performanceHtml, /Deal performance/i, "staff and owner surfaces should render deal performance");
+assert.match(performanceHtml, /Views/, "deal performance should use bar-owner language");
+assert.match(performanceHtml, /Tap rate/, "deal performance should show 7-day tap rate");
+assert.match(renderDealPerformance({ rows: [], loading: false, error: "" }), /No deal performance yet/, "empty performance state should be friendly");
+assert.match(renderDealPerformance({ rows: [], loading: false, error: "Performance data is unavailable right now." }), /Performance data is unavailable right now/, "performance errors should render without crashing");
 
 calls = [];
 const reportController = createReportController({

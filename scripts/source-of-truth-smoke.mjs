@@ -14,6 +14,8 @@ const dealMigration = readFileSync(new URL("../supabase/migrations/202606050001_
 const dealGrantMigration = readFileSync(new URL("../supabase/migrations/202606050002_venue_deals_api_grants.sql", import.meta.url), "utf8");
 const dealPolicyGrantMigration = readFileSync(new URL("../supabase/migrations/202606050003_venue_deals_policy_function_grants.sql", import.meta.url), "utf8");
 const dealAnalyticsHardeningMigration = readFileSync(new URL("../supabase/migrations/202606050004_harden_venue_deals_analytics.sql", import.meta.url), "utf8");
+const dealPerformanceMigration = readFileSync(new URL("../supabase/migrations/202606050005_venue_deal_performance_summary.sql", import.meta.url), "utf8");
+const analyticsService = readFileSync(new URL("../src/services/venueAnalyticsService.js", import.meta.url), "utf8");
 
 const forbiddenPatterns = [
   [/\bvar\s+BAR_UPDATES\b/, "BAR_UPDATES must not exist as production state"],
@@ -111,6 +113,27 @@ if (!/grant execute on function private\.can_manage_venue\(text\) to anon/.test(
 
 if (!/analytics_deal_matches_venue/.test(dealAnalyticsHardeningMigration) || !/deal_id, venue_id/.test(dealAnalyticsHardeningMigration)) {
   failures.push("analytics hardening should prevent cross-venue deal attribution");
+}
+
+if (!/function public\.venue_deal_performance\(target_venue_id text\)/.test(dealPerformanceMigration) || !/private\.can_manage_venue\(target_venue_id\)/.test(dealPerformanceMigration)) {
+  failures.push("deal performance summary must be role-gated by the existing venue staff/owner model");
+}
+
+if (!/returns table/.test(dealPerformanceMigration) || !/impressions_today/.test(dealPerformanceMigration) || !/tap_rate_7d/.test(dealPerformanceMigration)) {
+  failures.push("deal performance summary should expose aggregate deal counts and tap rate");
+}
+
+const performanceReturnBlock = dealPerformanceMigration.match(/returns table \([\s\S]*?\)\nlanguage sql/)?.[0] || "";
+if (/select\s+\*/i.test(dealPerformanceMigration) || /\buser_id\b|\bdevice_id\b|\blat\b|\blng\b|location/i.test(performanceReturnBlock)) {
+  failures.push("deal performance summary must not expose individual users, devices, or locations");
+}
+
+if (!/fetchVenueDealPerformance/.test(analyticsService) || !/rpc\("venue_deal_performance"/.test(analyticsService)) {
+  failures.push("analytics service should fetch aggregate deal performance through the RPC");
+}
+
+if (/live_status|crowd_level|wait_minutes|confidence_score/.test(analyticsService)) {
+  failures.push("analytics service must not read or write live venue status truth");
 }
 
 function walk(dir) {

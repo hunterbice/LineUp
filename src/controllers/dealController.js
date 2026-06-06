@@ -37,6 +37,7 @@ export function selectDashboardDeals({ deals, venues, favorites, recents }) {
 
 export function createDealController(deps) {
   function client() { return deps.supabaseClient && deps.supabaseClient(); }
+  function performanceState() { return deps.dealPerformanceByVenue ? deps.dealPerformanceByVenue() : {}; }
   function setDeals(deals) {
     const currentDeals = (Array.isArray(deals) ? deals : []).filter((deal) => isDealCurrent(deal));
     deps.setDealState({
@@ -46,6 +47,14 @@ export function createDealController(deps) {
       dealError: "",
     });
     return currentDeals;
+  }
+
+  function setPerformance(venueId, patch) {
+    if (!venueId || !deps.setDealState) return null;
+    const next = Object.assign({}, performanceState());
+    next[venueId] = Object.assign({ rows: [], loading: false, error: "", loadedAt: 0 }, next[venueId] || {}, patch || {});
+    deps.setDealState({ dealPerformanceByVenue: next });
+    return next[venueId];
   }
 
   function loadActiveDeals(renderAfter) {
@@ -64,6 +73,33 @@ export function createDealController(deps) {
       if (renderAfter) deps.renderAll();
       return [];
     });
+  }
+
+  function loadDealPerformance(venueId, renderAfter) {
+    if (!venueId) return Promise.resolve([]);
+    if (!client() || !deps.analytics || !deps.analytics.fetchVenueDealPerformance) {
+      setPerformance(venueId, { rows: [], loading: false, error: "Performance data is unavailable right now." });
+      if (renderAfter) deps.renderAll();
+      return Promise.resolve([]);
+    }
+    setPerformance(venueId, { loading: true, error: "" });
+    if (renderAfter) deps.renderAll();
+    return deps.analytics.fetchVenueDealPerformance(client(), venueId).then(function(rows) {
+      setPerformance(venueId, { rows: rows, loading: false, error: "", loadedAt: Date.now() });
+      if (renderAfter) deps.renderAll();
+      return rows;
+    }).catch(function(error) {
+      setPerformance(venueId, { rows: [], loading: false, error: error && error.message ? error.message : "Performance data is unavailable right now.", loadedAt: Date.now() });
+      if (deps.logError) deps.logError("deal_performance_failed", error && error.cause || error);
+      if (renderAfter) deps.renderAll();
+      return [];
+    });
+  }
+
+  function maybeLoadDealPerformance(venueId, renderAfter) {
+    const current = venueId && performanceState()[venueId];
+    if (!venueId || current && (current.loading || Date.now() - (current.loadedAt || 0) < 60000)) return Promise.resolve(current && current.rows || []);
+    return loadDealPerformance(venueId, renderAfter);
   }
 
   function dealsForVenue(venueId) {
@@ -105,6 +141,8 @@ export function createDealController(deps) {
     return deps.dealService.upsertVenueDeal(client(), payload).then(function() {
       return loadActiveDeals(false);
     }).then(function() {
+      return loadDealPerformance(venueId, false);
+    }).then(function() {
       deps.renderAll();
       deps.showToast("Deal saved");
     }).catch(function(error) {
@@ -116,9 +154,12 @@ export function createDealController(deps) {
   function deactivate(dealId) {
     if (!client()) return deps.showToast("Deal service unavailable");
     if (!dealId) return deps.showToast("No active deal selected");
+    const venueId = venueIdForDeal(dealId);
     deps.showToast("Deactivating deal...");
     return deps.dealService.deactivateVenueDeal(client(), dealId).then(function() {
       return loadActiveDeals(false);
+    }).then(function() {
+      return venueId ? loadDealPerformance(venueId, false) : Promise.resolve([]);
     }).then(function() {
       deps.renderAll();
       deps.showToast("Deal deactivated");
@@ -128,8 +169,18 @@ export function createDealController(deps) {
     });
   }
 
+  function venueIdForDeal(dealId) {
+    const all = deps.activeDeals ? deps.activeDeals() : [];
+    const found = (Array.isArray(all) ? all : []).find((deal) => deal && deal.id === dealId);
+    if (found) return found.venueId;
+    const grouped = deps.dealsByVenue ? deps.dealsByVenue() : {};
+    return Object.keys(grouped || {}).find((venueId) => (grouped[venueId] || []).some((deal) => deal && deal.id === dealId)) || "";
+  }
+
   return {
     loadActiveDeals,
+    loadDealPerformance,
+    maybeLoadDealPerformance,
     dealsForVenue,
     primaryDealForVenue,
     dashboardDeals,

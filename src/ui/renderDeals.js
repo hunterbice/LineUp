@@ -15,6 +15,32 @@ function timeLabel(value) {
   return new Date(value).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 }
 
+function dealStatus(row) {
+  if (!row) return "";
+  const now = Date.now();
+  const startsAt = Date.parse(row.startsAt || "");
+  const endsAt = Date.parse(row.endsAt || "");
+  if (row.isActive === false) return "Inactive";
+  if (Number.isFinite(endsAt) && endsAt <= now) return "Expired";
+  if (Number.isFinite(startsAt) && startsAt > now) return "Scheduled";
+  return "Active";
+}
+
+function numberLabel(value) {
+  return new Intl.NumberFormat("en-US").format(Number(value || 0));
+}
+
+function metric(label, value) {
+  const display = typeof value === "string" ? value : numberLabel(value);
+  return '<div class="dealPerfMetric"><b>' + esc(display) + '</b><span>' + esc(label) + '</span></div>';
+}
+
+function performanceEmptyCopy(state) {
+  if (state && state.loading) return "Loading deal performance...";
+  if (state && state.error) return state.error;
+  return "No deal performance yet. Post a deal to start tracking views and taps.";
+}
+
 function localDateTime(value, offsetHours) {
   const date = value ? new Date(value) : new Date(Date.now() + (offsetHours || 0) * 60 * 60 * 1000);
   const pad = (n) => String(n).padStart(2, "0");
@@ -85,4 +111,39 @@ export function renderDealEditor({ bar, deal, subscription, prefix, isOwner }) {
     '</div>';
 }
 
-export const dealRenderTestHooks = { localDateTime, timeLabel };
+export function renderDealPerformance({ rows, loading, error }) {
+  rows = Array.isArray(rows) ? rows : [];
+  if (loading || error || !rows.length) {
+    return '<div class="dealPerformance">' +
+      '<div class="sectionlabel">DEAL PERFORMANCE</div>' +
+      '<div class="dealPerfEmpty"><b>Deal performance</b><p>' + esc(performanceEmptyCopy({ loading, error })) + '</p></div>' +
+      '</div>';
+  }
+  return '<div class="dealPerformance">' +
+    '<div class="sectionlabel">DEAL PERFORMANCE</div>' +
+    rows.slice(0, 3).map(function(row) {
+      const reportActions = Number(row.reportOpensToday || 0) + Number(row.reportSubmitsToday || 0);
+      const noViews = Number(row.impressionsToday || 0) === 0 && Number(row.impressions7d || 0) === 0;
+      return '<div class="dealPerfCard">' +
+        '<div class="dealPerfTop"><div><b>' + esc(row.dealTitle || "Venue deal") + '</b><span>' + esc(dealStatus(row)) + ' · Ends ' + esc(timeLabel(row.endsAt) || "soon") + '</span></div>' +
+        '<em>' + esc(row.isPromoted ? "Promoted" : "Standard") + '</em></div>' +
+        (noViews ? '<p class="dealPerfNote">This deal is live, but it has not received views yet.</p>' : '') +
+        '<div class="dealPerfGroup"><span>Today</span><div class="dealPerfGrid">' +
+          metric("Views", row.impressionsToday) +
+          metric("Taps", row.tapsToday) +
+          metric("Venue opens", row.detailOpensToday) +
+          metric("Report actions", reportActions) +
+        '</div></div>' +
+        '<div class="dealPerfGroup"><span>Last 7 days</span><div class="dealPerfGrid">' +
+          metric("Views", row.impressions7d) +
+          metric("Taps", row.taps7d) +
+          metric("Venue opens", row.detailOpens7d) +
+          metric("Tap rate", (Number(row.tapRate7d || 0)).toFixed(1) + "%") +
+        '</div></div>' +
+      '</div>';
+    }).join("") +
+    '<p class="rewardFine">Deal performance is aggregate-only. It never changes crowd level, wait time, or confidence scoring.</p>' +
+    '</div>';
+}
+
+export const dealRenderTestHooks = { localDateTime, timeLabel, dealStatus, performanceEmptyCopy };

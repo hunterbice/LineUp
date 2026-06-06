@@ -15,6 +15,7 @@ export function createInitialAppState({ bars, activePage, area }) {
       reportsByVenue: {},
       activeDeals: [],
       dealsByVenue: {},
+      dealPerformanceByVenue: {},
       venueSubscriptionsByVenue: {},
       dealLoading: false,
       dealError: "",
