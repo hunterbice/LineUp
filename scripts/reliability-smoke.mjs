@@ -49,8 +49,8 @@ ordered(main, [/ownerAction\("venue_live_update"/, /loadSupabaseStatus\(\)/, /ow
 ordered(main, [/ownerAction\("set_venue_status"/, /loadSupabaseStatus\(\)/, /ownerRequest\(\)/], "owner status flow");
 assert.doesNotMatch(main, /Local update saved|saved locally/, "staff/report UI should not claim local mutation");
 assert.equal(sw, publicSw, "public service worker must match root service worker");
-assert.equal(config.match(/APP_VERSION\s*=\s*"([^"]+)"/)?.[1], "v68", "APP_VERSION should be v68");
-assert.match(sw, /lineup-pwa-v68/, "service worker should be v68");
+assert.equal(config.match(/APP_VERSION\s*=\s*"([^"]+)"/)?.[1], "v69", "APP_VERSION should be v69");
+assert.match(sw, /lineup-pwa-v69/, "service worker should be v69");
 
 const dealServiceSource = fs.readFileSync(path.join(root, "src/services/venueDealService.js"), "utf8");
 const dealRendererSource = fs.readFileSync(path.join(root, "src/ui/renderDeals.js"), "utf8");
@@ -208,6 +208,7 @@ const staffVenueHtml = renderVenueControlsForBar({
 assert.match(staffVenueHtml, /Update what students see tonight/, "staff dashboard should use bar-facing headline copy");
 assert.match(staffVenueHtml, /post tonight's deal or event/i, "staff dashboard should explain deal posting value");
 assert.match(staffVenueHtml, /Publish live status/i, "staff dashboard should use live-status language");
+assert.match(staffVenueHtml, /Preview Student Page/, "staff dashboard should expose a student-facing preview shortcut");
 const ownerVenueHtml = renderOwnerDashboardHtml({
   data: { summary: {}, active_sessions: [], venue_activity: [], recent_redemptions: [], audit_logs: [] },
   controlVenues: [{ id: "fresh", name: "Fresh backend venue", status: "active" }],
@@ -218,7 +219,27 @@ const ownerVenueHtml = renderOwnerDashboardHtml({
 assert.match(ownerVenueHtml, /LineUp Venue Tools/, "owner dashboard should be demo-ready for bars");
 assert.match(ownerVenueHtml, /track views, taps, and venue opens/i, "owner dashboard should explain deal performance value");
 assert.match(ownerVenueHtml, /Live crowd status stays separate from paid promotions/, "owner dashboard should explain promotion separation");
+assert.match(ownerVenueHtml, /Preview Student Page/, "owner dashboard should expose a student-facing preview shortcut");
 assert.doesNotMatch(emptyDealEditorHtml + performanceHtml + dealHtml, /\bTrending\b|\bHot\b|\bPacked\b/, "deal and performance copy must not invent popularity from analytics");
+
+const detailBase = {
+  bar: { id: "fresh", name: "Fresh backend venue", tag: "Pub", address: "1 University", lvl: "busy", wait: 12, event: "", lastCall: "1:30 AM", momentum: "steady", confSignals: 2, sources: [] },
+  reports: [],
+  detailTab: "live",
+  level: () => ({ label: "Busy", range: "45-70% full", pct: 60 }),
+  signalState: () => ({ key: "recent", label: "Recent live signals", detail: "Updated now", tone: "high", mode: "Crowd-sourced read" }),
+  confColor: () => "#12E0C4",
+  colors: { busy: "#FFB23F" },
+  svg: { starFull: "★", starEmpty: "☆", lastcall: "" },
+  logo: () => "",
+  isFavorite: () => false,
+  lineLeap: () => "#",
+  detailMiniRow: () => "",
+  detailPanel: () => "",
+  dealBlock: "",
+};
+assert.doesNotMatch(renderDetailHtml(detailBase), /Manage Venue/, "normal student detail should not render venue management");
+assert.match(renderDetailHtml({ ...detailBase, canManageVenue: true }), /Manage Venue/, "authorized venue preview should include management return action");
 
 calls = [];
 const reportController = createReportController({

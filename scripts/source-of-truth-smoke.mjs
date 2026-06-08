@@ -61,6 +61,11 @@ if (!/syncVenueAdminToSupabase\(id,patch\)/.test(main)) {
   failures.push("staff updates should pass a backend payload instead of mutating local bars");
 }
 
+const ownerPreviewBlock = main.match(/function openAdminForVenue[\s\S]*?function renderAdminSheet/)?.[0] || "";
+if (!/canAdminVenue\(id\)/.test(ownerPreviewBlock) || !/selectAdminVenue\(appState,id\)/.test(ownerPreviewBlock) || !/setPage\("statsPage"\)/.test(ownerPreviewBlock)) {
+  failures.push("student-page venue management shortcut must stay role-gated and route through the existing control page");
+}
+
 if (!/backend:\s*\{[\s\S]*venues/.test(appState) || !/ui:\s*\{[\s\S]*activePage/.test(appState)) {
   failures.push("appState should separate backend data from UI selections");
 }

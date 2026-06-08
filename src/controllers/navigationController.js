@@ -27,11 +27,6 @@ export function selectDetailTab(state, tab) {
   return tab;
 }
 
-export function selectPulseVibe(state, vibe) {
-  state.ui.pulseVibe = vibe;
-  return vibe;
-}
-
 export function selectReportLevel(state, level) {
   state.ui.selectedReportLevel = level;
   return level;

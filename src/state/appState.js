@@ -32,7 +32,6 @@ export function createInitialAppState({ bars, activePage, area }) {
       profileView: "home",
       detailTab: "live",
       intelMode: "tonight",
-      pulseVibe: "chill",
       currentVenue: null,
       selectedReportLevel: null,
       adminVenueId: null,

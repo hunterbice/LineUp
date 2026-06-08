@@ -192,8 +192,8 @@ async function main() {
     await page.waitForSelector("#mapPage.active");
     await page.locator(".navbtn[data-page='highlightsPage']").click();
     await page.waitForSelector("#highlightsPage.active");
-    await page.locator(".vibeBtn").nth(1).click();
-    await page.waitForSelector(".vibeBtn.on");
+    await page.locator("#highlightsPage", { hasText: "What’s happening tonight?" }).waitFor();
+    await page.locator("#highlightsPage", { hasText: "BEST READ RIGHT NOW" }).waitFor();
     await page.locator(".navbtn[data-page='profilePage']").click();
     await page.waitForSelector("#profilePage.active");
     const roleTabs = await page.locator("#roleNavButton").count();
