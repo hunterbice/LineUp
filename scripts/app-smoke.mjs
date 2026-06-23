@@ -128,6 +128,9 @@ async function main() {
     await page.route("**/*venue_analytics_events*", async (route) => {
       await route.fulfill({ status: 201, contentType: "application/json", body: "[]" });
     });
+    await page.route("**/functions/v1/venue-analytics-ingest", async (route) => {
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ accepted: true }) });
+    });
 
     await page.goto(baseUrl, { waitUntil: "networkidle" });
     await page.waitForSelector(".accountGate");

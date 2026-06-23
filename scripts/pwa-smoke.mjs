@@ -43,13 +43,13 @@ if (!/CACHE_NAME\s*=\s*"lineup-pwa-v\d+"/.test(sw)) throw new Error("Service wor
 const appVersion = configJs.match(/APP_VERSION\s*=\s*"([^"]+)"/)?.[1];
 const swVersion = sw.match(/CACHE_NAME\s*=\s*"lineup-pwa-(v\d+)"/)?.[1];
 if (!appVersion || !swVersion || appVersion !== swVersion) throw new Error(`APP_VERSION (${appVersion}) must match service worker (${swVersion})`);
-if (appVersion !== "v69") throw new Error(`APP_VERSION should be v69, found ${appVersion}`);
+if (appVersion !== "v70") throw new Error(`APP_VERSION should be v70, found ${appVersion}`);
 if (!/offline\.html/.test(sw)) throw new Error("Service worker offline fallback missing");
 if (publicSw !== null && publicSw !== sw) throw new Error("public/sw.js must match root sw.js because Vite deploys the public copy");
 if (!/url\.pathname\.endsWith\("\.js"\)/.test(sw) || !/url\.pathname\.endsWith\("\.css"\)/.test(sw)) throw new Error("Service worker should network-refresh JS/CSS chunks after deploy");
 
-if (!/href="\/icons\/favicon-32\.png\?v=69"/.test(html)) throw new Error("favicon link should use the v69 LineUp icon asset");
-if (!/href="\/icons\/apple-touch-icon\.png\?v=69"/.test(html)) throw new Error("apple-touch-icon link should use the v69 LineUp icon asset");
+if (!/href="\/icons\/favicon-32\.png\?v=70"/.test(html)) throw new Error("favicon link should use the v70 LineUp icon asset");
+if (!/href="\/icons\/apple-touch-icon\.png\?v=70"/.test(html)) throw new Error("apple-touch-icon link should use the v70 LineUp icon asset");
 if (!/src="\/icons\/icon-192\.png"/.test(html + renderShellJs)) throw new Error("sign-in/install app icon should use the canonical LineUp icon-192 asset");
 if (!/"icons\/icon-192\.png"/.test(JSON.stringify(manifest)) || !/"icons\/icon-192\.png"/.test(JSON.stringify(publicManifest))) {
   throw new Error("root and public manifests should use the canonical LineUp icon-192 asset");

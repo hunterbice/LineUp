@@ -21,6 +21,12 @@ verify_jwt = false
 [functions.app-event-ingest]
 verify_jwt = false
 
+[functions.venue-analytics-ingest]
+verify_jwt = false
+
+[functions.besttime-prior-import]
+verify_jwt = false
+
 [functions.reports-feed]
 verify_jwt = false
 
@@ -34,6 +40,9 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.account-sync]
+verify_jwt = false
+
+[functions.device-session]
 verify_jwt = false
 
 [analytics]

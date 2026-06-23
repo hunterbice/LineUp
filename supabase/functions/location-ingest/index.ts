@@ -101,10 +101,8 @@ Deno.serve(async (req: Request) => {
   const sessionId = typeof body.session_id === "string" ? body.session_id.slice(0, 128) : null;
   const requestedVenueId = typeof body.venue_id === "string" ? body.venue_id : null;
 
-  if (action === "report" || action === "check_in") {
-    const verifiedDevice = await verifyDeviceToken(body);
-    if (!verifiedDevice.ok) return jsonResponse({ error: verifiedDevice.error }, 401, req);
-  }
+  const verifiedDevice = await verifyDeviceToken(body);
+  if (!verifiedDevice.ok) return jsonResponse({ error: verifiedDevice.error }, 401, req);
 
   const supabase = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },

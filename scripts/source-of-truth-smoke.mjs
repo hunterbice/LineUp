@@ -118,8 +118,8 @@ if (!/private\.venue_has_deal_plan/.test(dealMigration) || !/private\.can_promot
   failures.push("venue deal write paths must enforce subscription/plan gating helpers");
 }
 
-if (!/grant select on public\.venue_deals to anon, authenticated/.test(dealGrantMigration) || !/grant insert, update on public\.venue_deals to authenticated/.test(dealGrantMigration) || !/grant insert on public\.venue_analytics_events/.test(dealGrantMigration)) {
-  failures.push("deal API grants should expose only the intended venue deal and analytics operations");
+if (!/grant select on public\.venue_deals to anon, authenticated/.test(dealGrantMigration) || !/grant insert, update on public\.venue_deals to authenticated/.test(dealGrantMigration)) {
+  failures.push("deal API grants should expose only the intended venue deal operations");
 }
 
 if (/grant\s+update\s+on\s+public\.venue_analytics_events/i.test(dealGrantMigration) || /grant\s+delete\s+on\s+public\.venue_analytics_events/i.test(dealGrantMigration)) {

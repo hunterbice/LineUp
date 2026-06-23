@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsResponse, isAllowedOrigin, jsonResponse } from "../_shared/cors.ts";
-import { issueDeviceToken, randomId, verifyDeviceToken } from "../_shared/security.ts";
+import { actorDevice, isRateLimitedAny, issueDeviceToken, logSecurityEventForActors, randomId, verifyDeviceToken } from "../_shared/security.ts";
 
 function cleanText(value: unknown, max = 160) {
   return typeof value === "string" ? value.trim().slice(0, max) : "";
@@ -20,6 +21,14 @@ Deno.serve(async (req: Request) => {
 
   let deviceId = cleanText(body.device_id, 128);
   let sessionId = cleanText(body.session_id, 128);
+  const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+  if (!supabaseUrl || !serviceRoleKey) return jsonResponse({ error: "Server configuration unavailable" }, 500, req);
+  const supabase = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
+  const actor = actorDevice({}, req);
+  if (await isRateLimitedAny(supabase, [actor], "device_session_issued", 200, 15)) {
+    return jsonResponse({ error: "Too many device session requests. Try again later." }, 429, req);
+  }
 
   if (deviceId && cleanText(body.device_token, 4096)) {
     const verified = await verifyDeviceToken(body);
@@ -33,6 +42,7 @@ Deno.serve(async (req: Request) => {
 
   try {
     const token = await issueDeviceToken(deviceId, sessionId);
+    await logSecurityEventForActors(supabase, "device_session_issued", [actor], {}, { renewed: Boolean(body.device_token) });
     return jsonResponse({
       ok: true,
       device_id: deviceId,

@@ -13,7 +13,7 @@ function isLocalDevOrigin(origin: string) {
 
 export function isAllowedOrigin(origin: string | null) {
   if (!origin) return true;
-  if (origin === "null") return true;
+  if (origin === "null") return false;
   return allowedOrigins.has(origin) || isLocalDevOrigin(origin);
 }
 

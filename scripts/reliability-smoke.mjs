@@ -49,8 +49,8 @@ ordered(main, [/ownerAction\("venue_live_update"/, /loadSupabaseStatus\(\)/, /ow
 ordered(main, [/ownerAction\("set_venue_status"/, /loadSupabaseStatus\(\)/, /ownerRequest\(\)/], "owner status flow");
 assert.doesNotMatch(main, /Local update saved|saved locally/, "staff/report UI should not claim local mutation");
 assert.equal(sw, publicSw, "public service worker must match root service worker");
-assert.equal(config.match(/APP_VERSION\s*=\s*"([^"]+)"/)?.[1], "v69", "APP_VERSION should be v69");
-assert.match(sw, /lineup-pwa-v69/, "service worker should be v69");
+assert.equal(config.match(/APP_VERSION\s*=\s*"([^"]+)"/)?.[1], "v70", "APP_VERSION should be v70");
+assert.match(sw, /lineup-pwa-v70/, "service worker should be v70");
 
 const dealServiceSource = fs.readFileSync(path.join(root, "src/services/venueDealService.js"), "utf8");
 const dealRendererSource = fs.readFileSync(path.join(root, "src/ui/renderDeals.js"), "utf8");

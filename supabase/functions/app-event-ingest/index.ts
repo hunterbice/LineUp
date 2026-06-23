@@ -1,6 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsResponse, isAllowedOrigin, jsonResponse } from "../_shared/cors.ts";
+import { verifyDeviceToken } from "../_shared/security.ts";
 
 const allowedEvents = new Set([
   "app_open",
@@ -83,11 +84,23 @@ Deno.serve(async (req: Request) => {
     return jsonResponse({ error: "Unsupported event type" }, 400, req);
   }
 
+  const verifiedDevice = await verifyDeviceToken(body);
+  if (!verifiedDevice.ok) return jsonResponse({ error: verifiedDevice.error }, 401, req);
+
   const supabase = createClient(supabaseUrl, serviceRoleKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
   const user = await getUser(req, supabase);
   if (!user) return jsonResponse({ error: "LineUp account required" }, 401, req);
+
+  const { count: userCount, error: userCountError } = await supabase
+    .from("app_signal_events")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id)
+    .gte("created_at", sinceMinutes(15));
+  if (!userCountError && Number(userCount || 0) >= 120) {
+    return jsonResponse({ error: "Too many app events. Try again later." }, 429, req);
+  }
 
   if (venueId) {
     const { data: venue, error: venueError } = await supabase

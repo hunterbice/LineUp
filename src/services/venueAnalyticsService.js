@@ -49,22 +49,19 @@ function normalizePerformance(row) {
   };
 }
 
-export function createVenueAnalyticsService() {
+export function createVenueAnalyticsService({ ingestEvent } = {}) {
   const impressionKeys = new Set();
 
   function trackVenueEvent(client, event) {
-    if (!client || !event || !event.venueId || !ALLOWED_EVENTS.has(event.eventType)) return Promise.resolve(null);
-    const row = {
+    if (!ingestEvent || !event || !event.venueId || !ALLOWED_EVENTS.has(event.eventType)) return Promise.resolve(null);
+    const payload = {
       venue_id: event.venueId,
       deal_id: event.dealId || null,
       event_type: event.eventType,
-      user_id: event.userId || null,
-      device_id: event.deviceId || null,
       metadata: sanitizeMetadata(event.metadata || {}),
     };
-    return client.from("venue_analytics_events").insert(row).then(function(res) {
-      if (res.error) throw res.error;
-      return res.data || null;
+    return ingestEvent(payload).then(function(res) {
+      return res && (res.event || res) || null;
     }).catch(function(error) {
       if (event.logError) event.logError("venue_analytics_failed", error);
       return null;
