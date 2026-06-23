@@ -59,7 +59,6 @@ Deno.serve(async (req: Request) => {
       venue_id: row.venue_id,
       crowd_level: row.crowd_level,
       wait_minutes: Number(row.wait_minutes || 0),
-      note: cleanText(row.note, 180),
       photo_signal: Boolean(row.photo_signal),
       location_verified: Boolean(row.location_verified),
       created_at: row.created_at,

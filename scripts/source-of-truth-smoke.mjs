@@ -103,8 +103,8 @@ if (!/Promoted deals can increase visibility/.test(dealRenderer) || !/crowd leve
   failures.push("deal editor should clearly separate promoted placement from live crowd truth");
 }
 
-if (!/Post tonight's deal to start tracking student interest/.test(dealRenderer) || !/No cover before 10/.test(dealRenderer) || !/\$3 wells tonight/.test(dealRenderer)) {
-  failures.push("deal editor should include venue onboarding and practical static examples");
+if (!/Post tonight's deal to start tracking student interest/.test(dealRenderer) || !/No cover before 10/.test(dealRenderer) || !/DJ starts at 10:30/.test(dealRenderer) || !/Game day special/.test(dealRenderer) || !/Food special/.test(dealRenderer) || /\$3 wells tonight/.test(dealRenderer)) {
+  failures.push("deal editor should include venue onboarding and review-safe static examples");
 }
 
 if (/RPC|metadata|backend-confirmed|RLS|Supabase/.test(dealRenderer + ownerRenderer + staffRenderer)) {

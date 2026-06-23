@@ -22,6 +22,7 @@ export function createInitialAppState({ bars, activePage, area }) {
       analyticsEnabled: true,
       supabaseReady: false,
       ownerData: null,
+      earlyAccess: { joined: false, joined_at: null, campus_slug: "university_of_arizona", requested_venue_ids: [] },
     },
     auth: {
       accessToken: null,

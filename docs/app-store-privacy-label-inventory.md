@@ -1,0 +1,28 @@
+# LineUp App Privacy Label Inventory
+
+This inventory is intentionally conservative. App Store Connect answers must be reviewed again against the native wrapper and production configuration before submission.
+
+| Data type | Where collected | Purpose | Linked to user? | Tracking? | Shared with venues? | Retention/deletion | Evidence |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Email address | Supabase Auth account creation/sign-in | Authentication, account support, security | Yes | No | No | Deleted with auth account | `renderShell.js`, Supabase Auth calls, `account-sync` |
+| Display name | Setup/Profile | Public identity when Public mode is selected | Yes | No | No raw export | Profile and reports removed on deletion | `renderShell.js`, `renderProfile.js`, `account-sync`, `reports-feed` |
+| Profile photo | Optional setup/profile upload as data URL | Public report identity when Public mode is selected | Yes | No | No raw export | Profile and reports removed on deletion | `handleAvatarFile`, `account-sync`, `reports-feed` |
+| Campus/area | Setup, area selector, Early Access function | Manual navigation and campus launch planning | Yes for profile campus; area cache is device UI state | No | Aggregate launch planning only | Profile value deleted with account; UI area cache is harmless local state | `renderShell.js`, `cacheState.js`, `early-access` |
+| Favorites/saved venues | Favorite controls and `account-sync` | Personalization and faster return use | Yes | No | Aggregate interest may be measured; raw favorites are not exposed | Deleted with account | `retentionController.js`, `account-sync`, `user_favorites` migrations |
+| Launch-deal requests | Venue detail through `early-access` | Measure launch interest | Yes internally | No | Aggregate count only through authorized function | Deleted with account | `early-access`, `launch_deal_requests`, `launch_deal_interest` |
+| Structured crowd reports | Report sheet through `location-ingest` | Crowd/wait estimates, trust and abuse prevention, rewards | Yes internally; may display public name or Anonymous User based on preference | No | No raw user export; public feed contains structured signal and chosen display identity | Reports and report-derived signals removed on deletion; non-identifying aggregate venue history may remain | `renderReportSheet.js`, `location-ingest`, `reports-feed` |
+| Approximate and precise foreground location | Optional presence, report, and check-in paths | Nearby venues, verification, aggregate crowd confidence, abuse prevention | Yes internally while account exists | No | Individual history is not shared with venues; authorized owner operations may access operational location data | Precise presence/check-in rows and device links removed on deletion | `locationService.js`, `location-ingest`, presence migrations, owner dashboard |
+| Device ID and signed-device token | Device-session service/Edge Function | Security, rate limiting, session integrity, anti-abuse | Yes after account claim | No | No | Device link and device-scoped operational rows removed on deletion; token expires | `deviceSessionService.js`, `device-session`, `_shared/security.ts` |
+| Product interaction analytics | App events and venue analytics Edge Functions | Product operation, aggregate deal interest, abuse/cost control | Yes internally | No cross-company tracking | Authorized venues receive aggregate performance only | User/device rows removed on deletion where linked; non-identifying aggregates may remain | `venueAnalyticsService.js`, `app-event-ingest`, `venue-analytics-ingest` |
+| Rewards activity | Reward ledger | Points, redemption, fraud prevention | Yes | No | Redemption operations only to authorized owner tools | User/device reward rows removed on deletion | `rewardService.js`, `reward-ledger`, reward migrations |
+| Diagnostics and security logs | Frontend error logger, Edge Function/runtime logs, network infrastructure | Reliability, debugging, fraud and security | Depends on request/session context | No | No | Runtime/provider retention applies; do not intentionally log passwords, exact location payloads, or auth tokens | `logFrontendError`, Edge Function error logs, production-safety docs |
+| Owner/staff role information | `venue_admins`, account permissions | Authorization and venue operations | Yes | No | Relevant role/venue assignment visible only to authorized user/owner | Role cascades when auth account is deleted | auth/role migrations, `account-sync`, owner/staff functions |
+| IP address | Supabase/hosting/network request handling | Delivery, security, rate limiting, provider operations | Depends on provider logs | No | No | Governed by provider logging/retention; not intentionally written to LineUp product tables | Edge Function/network architecture and provider behavior |
+
+## Tracking conclusion
+
+LineUp does not use collected data to track users across other companies' apps or websites and does not sell user data. App Store Connect's "used for tracking" answer should remain **No** unless a later SDK or advertising integration changes that fact.
+
+## Venue sharing boundary
+
+Venue operators receive venue-level aggregate interest and deal-performance totals. They must not receive raw favorite lists, launch-request identities, device identifiers, email addresses, or individual location histories.

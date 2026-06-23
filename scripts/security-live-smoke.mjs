@@ -34,7 +34,7 @@ async function newDevice() {
   return result.body;
 }
 
-for (const name of ["device-profile-summary", "app-event-ingest", "venue-analytics-ingest", "owner-actions", "owner-dashboard", "venue-status-ingest", "besttime-prior-import"]) {
+for (const name of ["device-profile-summary", "app-event-ingest", "venue-analytics-ingest", "early-access", "owner-actions", "owner-dashboard", "venue-status-ingest", "besttime-prior-import"]) {
   const result = await edge(name, { venue_id: "bens", device_id: "security_probe", event_type: "detail_view", crowd_level: "busy", action: "venue_detail" });
   expectDenied(`${name} unauthenticated call`, result);
 }
@@ -43,6 +43,7 @@ const probes = [
   ["direct report insert", "/rest/v1/reports", { venue_id: "bens", crowd_level: "security_probe_invalid", wait_minutes: 0, source: "user_report" }],
   ["direct app signal insert", "/rest/v1/app_signal_events", { venue_id: "bens", event_type: "security_probe_invalid", device_id: "security_probe" }],
   ["direct analytics insert", "/rest/v1/venue_analytics_events", { venue_id: "bens", event_type: "security_probe_invalid", metadata: {} }],
+  ["direct launch deal request insert", "/rest/v1/launch_deal_requests", { user_id: "00000000-0000-0000-0000-000000000001", venue_id: "bens" }],
   ["direct role self-assignment", "/rest/v1/venue_admins", { user_id: "00000000-0000-0000-0000-000000000001", venue_id: null, role: "owner" }],
   ["direct live status update", "/rest/v1/live_status?venue_id=eq.bens", { crowd_level: "security_probe_invalid" }, "PATCH"],
   ["direct subscription update", "/rest/v1/venue_subscriptions?venue_id=eq.bens", { plan: "security_probe_invalid" }, "PATCH"],
@@ -113,6 +114,18 @@ try {
     body: JSON.stringify({ user_id: userB.id, venue_id: null, role: "owner" }),
   });
   if (![401, 403].includes(directRoleWrite.status)) throw new Error(`privilege escalation write expected denial, received ${directRoleWrite.status}`);
+
+  const joinEarlyAccess = await edge("early-access", { action: "join", ...deviceA }, userA.token);
+  if (joinEarlyAccess.status !== 200 || !joinEarlyAccess.body?.early_access?.joined) throw new Error(`early access join failed (${joinEarlyAccess.status})`);
+  const requestDeal = await edge("early-access", { action: "request_deal", venue_id: "bens", ...deviceA }, userA.token);
+  if (requestDeal.status !== 200 || !requestDeal.body?.early_access?.requested_venue_ids?.includes("bens")) throw new Error(`launch deal request failed (${requestDeal.status})`);
+
+  const deleteA = await edge("account-sync", { action: "delete_account", confirm: "DELETE", user_id: userB.id, ...deviceA }, userA.token);
+  if (deleteA.status !== 200 || !deleteA.body?.deleted) throw new Error(`self account deletion failed (${deleteA.status})`);
+  const deletedA = await admin.auth.admin.getUserById(userA.id);
+  if (!deletedA.error) throw new Error("deleted user A still exists after self-delete");
+  const survivingB = await admin.auth.admin.getUserById(userB.id);
+  if (survivingB.error || !survivingB.data.user) throw new Error("BOLA: user A deletion affected user B");
 } finally {
   for (const userId of createdUsers) await admin.auth.admin.deleteUser(userId).catch(() => {});
 }

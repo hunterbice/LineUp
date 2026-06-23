@@ -1,10 +1,13 @@
 // Keep this version in sync with APP_VERSION in index.html.
-const CACHE_NAME = "lineup-pwa-v72";
+const CACHE_NAME = "lineup-pwa-v73";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./manifest.webmanifest",
   "./offline.html",
+  "./legal/privacy.html",
+  "./legal/terms.html",
+  "./legal/support.html",
   "./icons/favicon-32.png",
   "./icons/icon.svg",
   "./icons/icon-192.png",

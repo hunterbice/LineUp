@@ -115,6 +115,7 @@ async function main() {
         updated_at: new Date(now - 60 * 60 * 1000).toISOString(),
       },
     ];
+    const earlyAccessState = { joined: false, joined_at: null, campus_slug: "university_of_arizona", requested_venue_ids: [] };
     await page.addInitScript((deals) => {
       window.LINEUP_TEST_DEALS = deals;
     }, smokeDeals);
@@ -131,6 +132,19 @@ async function main() {
     await page.route("**/functions/v1/venue-analytics-ingest", async (route) => {
       await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ accepted: true }) });
     });
+    await page.route("**/functions/v1/early-access", async (route) => {
+      const payload = route.request().postDataJSON() || {};
+      if (payload.action === "join") {
+        earlyAccessState.joined = true;
+        earlyAccessState.joined_at = new Date().toISOString();
+      }
+      if (payload.action === "request_deal" && payload.venue_id && !earlyAccessState.requested_venue_ids.includes(payload.venue_id)) {
+        earlyAccessState.joined = true;
+        earlyAccessState.joined_at ||= new Date().toISOString();
+        earlyAccessState.requested_venue_ids.push(payload.venue_id);
+      }
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true, early_access: earlyAccessState }) });
+    });
 
     await page.goto(baseUrl, { waitUntil: "networkidle" });
     await page.waitForSelector(".accountGate");
@@ -139,11 +153,13 @@ async function main() {
     await page.locator("#authPassword").fill("lineup-smoke-1");
     await page.locator(".authToggle label", { hasText: "Create account" }).click();
     await page.locator("#authName").fill("Smoke Test");
-    await page.locator(".accountGate button", { hasText: "Create Account" }).click();
+    await page.locator(".accountGate button", { hasText: "Join Early Access" }).click();
     await page.waitForSelector(".setupGate");
+    await page.locator("#setupCampus").waitFor();
     await page.locator("#setupName").fill("Smoke Test");
-    await page.locator(".setupGate button", { hasText: "Finish Setup" }).click();
+    await page.locator(".setupGate button", { hasText: "Join Arizona Early Access" }).click();
     await page.waitForSelector("#livePage.active");
+    await page.locator(".earlyAccessBanner", { hasText: "Build your fall lineup" }).waitFor();
     await page.waitForSelector(".barcard .statusline");
     const lightMode = await page.evaluate(() => {
       const colorTotal = (value) => (value.match(/[\d.]+/g) || []).slice(0, 3).reduce((sum, part) => sum + Number(part), 0);
@@ -177,6 +193,8 @@ async function main() {
     await page.waitForSelector(".barcard .fav.on");
     await page.locator(".barcard").nth(1).click();
     await page.waitForSelector("#detail.open");
+    await page.locator(".launchDealRequest", { hasText: "Request a launch deal" }).click();
+    await page.locator(".launchDealRequest.requested", { hasText: "Launch deal requested" }).waitFor();
     await page.locator("button[onclick='closeDetail()']").click();
     await page.waitForSelector("#detail:not(.open)");
     const recentCache = await page.evaluate(() => JSON.parse(localStorage.getItem("lineup_recent_venues") || "[]"));
@@ -222,11 +240,19 @@ async function main() {
     await page.waitForSelector("#detail:not(.open)");
     await page.locator(".navbtn[data-page='profilePage']").click();
     await page.waitForSelector("#profilePage.active");
-    const roleTabs = await page.locator("#roleNavButton").count();
-    if (roleTabs !== 0) throw new Error("Normal account should not receive owner or venue controls");
+    await page.locator(".profileMenuItem", { hasText: "Privacy Policy" }).waitFor();
+    await page.locator(".profileMenuItem", { hasText: "Terms of Use" }).waitFor();
+    await page.locator(".profileMenuItem", { hasText: "Help / Support" }).waitFor();
     await page.locator(".profileMark").click({ clickCount: 5 });
     const hiddenSheetOpened = await page.locator("#reportSheet.open").count();
     if (hiddenSheetOpened) throw new Error("Profile avatar should not open hidden owner access");
+    await page.locator(".profileMenuItem", { hasText: "Account & Access" }).click();
+    await page.locator(".dangerBtn", { hasText: "Delete My Account" }).click();
+    await page.locator("#reportSheet.open", { hasText: "Delete your LineUp account?" }).waitFor();
+    await page.locator("#reportSheet button", { hasText: "Cancel" }).click();
+    await page.waitForFunction(() => !document.querySelector("#reportSheet")?.classList.contains("open"));
+    const roleTabs = await page.locator("#roleNavButton").count();
+    if (roleTabs !== 0) throw new Error("Normal account should not receive owner or venue controls");
 
     if (errors.length) throw new Error(`Browser errors:\n${errors.join("\n")}`);
     console.log("App smoke checks passed");

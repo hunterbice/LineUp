@@ -77,6 +77,79 @@ async function getPermissions(supabase: ReturnType<typeof createClient>, userId:
   };
 }
 
+async function requireOk(result: { error: unknown }, label: string) {
+  if (result.error) throw new Error(label);
+}
+
+async function deleteAccountData(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  currentDeviceId: string,
+) {
+  const { data: deviceRows, error: devicesError } = await supabase
+    .from("user_devices")
+    .select("device_id")
+    .eq("user_id", userId);
+  if (devicesError) throw devicesError;
+  const deviceIds = Array.from(new Set([currentDeviceId, ...(deviceRows || []).map((row) => row.device_id)].filter(Boolean)));
+
+  const { data: reportRows, error: reportsError } = await supabase
+    .from("reports")
+    .select("id,venue_id")
+    .eq("user_id", userId);
+  if (reportsError) throw reportsError;
+  const reportIds = (reportRows || []).map((row) => row.id);
+  const affectedVenues = Array.from(new Set((reportRows || []).map((row) => row.venue_id).filter(Boolean)));
+
+  for (const reportId of reportIds) {
+    const { data: signals, error: signalReadError } = await supabase
+      .from("venue_confidence_signals")
+      .select("id")
+      .contains("metadata", { report_id: reportId });
+    if (signalReadError) throw signalReadError;
+    const signalIds = (signals || []).map((row) => row.id);
+    if (signalIds.length) await requireOk(
+      await supabase.from("venue_confidence_signals").delete().in("id", signalIds),
+      "Unable to remove report-derived confidence signals",
+    );
+  }
+
+  const userTables = [
+    "launch_deal_requests",
+    "presence_snapshots",
+    "venue_checkins",
+    "app_signal_events",
+    "venue_analytics_events",
+    "reward_events",
+    "reward_redemptions",
+    "reporter_reliability",
+  ];
+  for (const table of userTables) {
+    await requireOk(await supabase.from(table).delete().eq("user_id", userId), `Unable to clear ${table}`);
+  }
+  if (reportIds.length) await requireOk(await supabase.from("reports").delete().in("id", reportIds), "Unable to remove reports");
+
+  if (deviceIds.length) {
+    const deviceTables = [
+      "presence_snapshots",
+      "venue_checkins",
+      "app_signal_events",
+      "venue_analytics_events",
+      "reward_events",
+      "reward_redemptions",
+      "reporter_reliability",
+    ];
+    for (const table of deviceTables) {
+      await requireOk(await supabase.from(table).delete().in("device_id", deviceIds), `Unable to clear device data from ${table}`);
+    }
+  }
+
+  for (const venueId of affectedVenues) {
+    const { error } = await supabase.rpc("recompute_venue_live_status", { p_venue_id: venueId });
+    if (error) console.error("Account deletion status recompute failed", venueId, error.message);
+  }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return corsResponse(req);
   if (req.method !== "POST") return jsonResponse({ error: "Method not allowed" }, 405, req);
@@ -100,6 +173,14 @@ Deno.serve(async (req: Request) => {
   if (!verifiedDevice.ok) return jsonResponse({ error: verifiedDevice.error }, 401, req);
 
   try {
+    if (action === "delete_account") {
+      if (body.confirm !== "DELETE") return jsonResponse({ error: "Deletion confirmation is required" }, 400, req);
+      await deleteAccountData(supabase, user.id, deviceId);
+      const { error: deleteError } = await supabase.auth.admin.deleteUser(user.id);
+      if (deleteError) throw deleteError;
+      return jsonResponse({ ok: true, deleted: true }, 200, req);
+    }
+
     const prefs = cleanPrefs(body.preferences);
     const { data: existingProfile } = await supabase
       .from("user_profiles")

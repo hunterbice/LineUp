@@ -77,7 +77,7 @@ export function renderDealEditor({ bar, deal, subscription, prefix, isOwner }) {
     '<div class="dealPlan"><b>Post tonight\'s deal or event</b><span>' + (canPost ? 'Students see it while choosing where to go.' : 'Deal posting is not enabled for this venue yet.') + '</span></div>' +
     (!deal ? '<div class="dealTips"><b>Post tonight\'s deal to start tracking student interest.</b><span>Add a short title, set start/end time, keep it specific, and update it before peak hours.</span></div>' : '') +
     '<label class="fieldLabel">Title</label><input class="field" id="' + prefix + 'DealTitle" value="' + esc(deal && deal.title || "") + '" maxlength="80" placeholder="No cover before 10">' +
-    '<div class="dealExamples">Examples: No cover before 10 · $3 wells tonight · DJ starts at 10:30 · Game day special</div>' +
+    '<div class="dealExamples">Examples: No cover before 10 · DJ starts at 10:30 · Game day special · Food special</div>' +
     '<label class="fieldLabel">Description</label><textarea class="field" id="' + prefix + 'DealDescription" maxlength="240" placeholder="Keep it short — students are deciding fast.">' + esc(deal && deal.description || "") + '</textarea>' +
     '<div class="adminMini"><select class="field" id="' + prefix + 'DealType">' +
       ["deal", "event", "cover", "happy_hour", "special"].map(function(type) { return '<option value="' + type + '" ' + (deal && deal.dealType === type ? "selected" : "") + '>' + esc(dealTypeLabel(type)) + '</option>'; }).join("") +

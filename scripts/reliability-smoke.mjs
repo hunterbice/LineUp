@@ -7,6 +7,7 @@ import { createReportController } from "../src/controllers/reportController.js";
 import { hydrateVenues } from "../src/controllers/retentionController.js";
 import { createDealController, groupDealsByVenue, isDealCurrent, selectActiveDeals, selectDashboardDeals } from "../src/controllers/dealController.js";
 import { createVenueStaffController } from "../src/controllers/venueStaffController.js";
+import { createEarlyAccessController } from "../src/controllers/earlyAccessController.js";
 import { venueAnalyticsTestHooks } from "../src/services/venueAnalyticsService.js";
 import { venueDealTestHooks } from "../src/services/venueDealService.js";
 import { renderDetailHtml, renderReportRows } from "../src/ui/renderBarDetail.js";
@@ -30,10 +31,18 @@ const styles = fs.readFileSync(path.join(root, "src/styles.css"), "utf8");
 const shellRenderer = fs.readFileSync(path.join(root, "src/ui/renderShell.js"), "utf8");
 const profileRenderer = fs.readFileSync(path.join(root, "src/ui/renderProfile.js"), "utf8");
 const dealsPageRenderer = fs.readFileSync(path.join(root, "src/ui/renderDealsPage.js"), "utf8");
+const dealsRenderer = fs.readFileSync(path.join(root, "src/ui/renderDeals.js"), "utf8");
 const manifest = fs.readFileSync(path.join(root, "manifest.webmanifest"), "utf8");
 const publicManifest = fs.readFileSync(path.join(root, "public/manifest.webmanifest"), "utf8");
 const offline = fs.readFileSync(path.join(root, "offline.html"), "utf8");
 const publicOffline = fs.readFileSync(path.join(root, "public/offline.html"), "utf8");
+const accountSync = fs.readFileSync(path.join(root, "supabase/functions/account-sync/index.ts"), "utf8");
+const earlyAccessFunction = fs.readFileSync(path.join(root, "supabase/functions/early-access/index.ts"), "utf8");
+const earlyAccessMigration = fs.readFileSync(path.join(root, "supabase/migrations/202606230001_app_store_early_access.sql"), "utf8");
+const reportSheetRenderer = fs.readFileSync(path.join(root, "src/ui/renderReportSheet.js"), "utf8");
+const locationIngest = fs.readFileSync(path.join(root, "supabase/functions/location-ingest/index.ts"), "utf8");
+const reportsFeed = fs.readFileSync(path.join(root, "supabase/functions/reports-feed/index.ts"), "utf8");
+const legalPages = ["privacy", "terms", "support"].map((name) => fs.readFileSync(path.join(root, `public/legal/${name}.html`), "utf8")).join("\n");
 
 function ordered(source, patterns, label) {
   let cursor = -1;
@@ -52,15 +61,15 @@ assert.match(cacheState, /viewedAt/, "recent venue cache should store timestamps
 const recentCacheBlock = cacheState.match(/export function getRecentVenues[\s\S]*?export function getArea/)?.[0] || "";
 assert.doesNotMatch(recentCacheBlock, /\b(status|crowd|crowd_level|wait|wait_minutes|report|reports|live_status|confidence)\b/, "recent venue cache must not store live status fields");
 assert.doesNotMatch(main, /lineup_bar_updates|lineup_local_reports/, "main must not read legacy local source-of-truth keys");
-assert.match(main, /syncReportToSupabase\(bar,patch,note,false\)/, "normal reports must use backend ingest");
-ordered(main, [/syncReportToSupabase\(bar,patch,note,false\)/, /loadVenueReports\(bar\.id\)/, /loadSupabaseStatus\(\)/], "report flow");
+assert.match(main, /syncReportToSupabase\(bar,patch\)/, "structured normal reports must use backend ingest without public free text");
+ordered(main, [/syncReportToSupabase\(bar,patch\)/, /loadVenueReports\(bar\.id\)/, /loadSupabaseStatus\(\)/], "report flow");
 ordered(main, [/venueStatusIngest\(id,patch/, /loadSupabaseStatus\(\)/], "staff flow");
 ordered(main, [/ownerAction\("venue_live_update"/, /loadSupabaseStatus\(\)/, /ownerRequest\(\)/], "owner publish flow");
 ordered(main, [/ownerAction\("set_venue_status"/, /loadSupabaseStatus\(\)/, /ownerRequest\(\)/], "owner status flow");
 assert.doesNotMatch(main, /Local update saved|saved locally/, "staff/report UI should not claim local mutation");
 assert.equal(sw, publicSw, "public service worker must match root service worker");
-assert.equal(config.match(/APP_VERSION\s*=\s*"([^"]+)"/)?.[1], "v72", "APP_VERSION should be v72");
-assert.match(sw, /lineup-pwa-v72/, "service worker should be v72");
+assert.equal(config.match(/APP_VERSION\s*=\s*"([^"]+)"/)?.[1], "v73", "APP_VERSION should be v73");
+assert.match(sw, /lineup-pwa-v73/, "service worker should be v73");
 assert.match(html, /data-page="highlightsPage"[^>]*aria-label="Deals"/, "main navigation should expose Deals");
 assert.doesNotMatch(html, />Pulse</, "main navigation must not expose the retired Pulse label");
 assert.match(html, /data-theme="light"/, "HTML should default to light mode");
@@ -77,6 +86,24 @@ assert.match(styles, /--brand:#2563EB/, "brand token should use clean blue");
 assert.doesNotMatch(styles, /--(?:bg|surface|card|brand):(?:#12151B|#191D24|#1D222A|#63D7CC)/, "old dark and teal root tokens must not return");
 assert.doesNotMatch(main, /mapbox:\/\/styles\/mapbox\/dark-v11/, "maps should not use the dark style");
 assert.doesNotMatch(shellRenderer + profileRenderer + dealsPageRenderer, /coming soon|\bdemo\b/i, "public student copy should not expose unfinished or demo language");
+assert.match(shellRenderer, /Join Early Access[\s\S]*University of Arizona/, "account/setup flow should expose functional Arizona Early Access and manual campus selection");
+assert.doesNotMatch(shellRenderer + profileRenderer, /Sign in with Apple|Apple sign-in/i, "nonfunctional Apple Sign-In must not appear");
+assert.match(profileRenderer, /openDeleteAccountConfirmation[\s\S]*Delete My Account/, "profile must expose in-app account deletion");
+assert.match(profileRenderer, /Privacy Policy[\s\S]*Terms of Use[\s\S]*Help \/ Support[\s\S]*Account & Access/, "profile must expose review-critical account and legal surfaces");
+assert.match(legalPages, /support@get-lineup\.app/, "public legal/support pages must expose an actionable support contact");
+assert.doesNotMatch(reportSheetRenderer, /textarea|noteField|Optional note/i, "iOS v1 report sheet must remain structured-only");
+assert.doesNotMatch(reportsFeed, /note:\s*cleanText/, "public reports feed must not expose free-form report notes");
+assert.match(locationIngest, /note:\s*null/, "report ingestion must not store new public free-form notes");
+assert.match(main, /BARS=\[\][\s\S]*Live venue data is unavailable/, "failed initial backend load must render an honest unavailable state");
+assert.doesNotMatch(main, /BARS=FALLBACK_BARS\.map|Using local LineUp data/, "prototype venue seeds must not become live truth when Supabase is unavailable");
+assert.match(earlyAccessFunction, /verifyDeviceToken\(body\)/, "Early Access writes must require signed device proof");
+assert.match(earlyAccessFunction, /auth\.getUser\(token\)/, "Early Access writes must validate the authenticated user");
+assert.match(earlyAccessFunction, /launch_deal_requests[\s\S]*>= 20/, "launch-deal requests must be rate limited");
+assert.match(earlyAccessMigration, /revoke all on public\.launch_deal_requests from public, anon, authenticated/, "launch-deal request table must deny direct browser access");
+assert.match(earlyAccessMigration, /launch_deal_interest[\s\S]*count\(\*\)[\s\S]*private\.can_manage_venue/, "venue access to launch interest must be aggregate and role-gated");
+assert.match(accountSync, /action === "delete_account"[\s\S]*body\.confirm !== "DELETE"[\s\S]*deleteAccountData[\s\S]*auth\.admin\.deleteUser\(user\.id\)/, "account deletion must be confirmed, self-bound, cleaned, and server-side");
+assert.doesNotMatch(shellRenderer + profileRenderer + dealsPageRenderer, /Stripe|Upgrade (?:plan|now)|Subscribe(?: now)?|Buy now|Checkout|external payment/i, "student UI must not expose iOS purchase CTAs");
+assert.doesNotMatch(shellRenderer + profileRenderer + dealsPageRenderer + dealsRenderer, /\$3 wells|\bshots?\b|drink-until-close/i, "public UI and venue examples must avoid risky alcohol promotion copy");
 assert.match(styles, /\.field,select\.field,input\.field,textarea\.field\{[^}]*font-size:16px/, "mobile form controls should prevent iOS input zoom");
 assert.match(styles, /\.barcardSkeleton|\.dealCardSkeleton/, "Live and Deals should have structural skeleton states");
 
@@ -135,6 +162,18 @@ const dashboardHtml = renderRetentionDashboard({
 assert.match(dashboardHtml, /Your spots/, "dashboard should render favorites section");
 assert.match(dashboardHtml, /Recently checked/, "dashboard should render recents section");
 assert.match(dashboardHtml, /All nearby spots/, "dashboard should render all nearby section");
+
+let earlyRequest = null;
+const earlyController = createEarlyAccessController({
+  isSignedIn: () => true,
+  request: (action, extra) => {
+    earlyRequest = { action, extra };
+    return Promise.resolve({ early_access: { joined: true, campus_slug: "university_of_arizona", requested_venue_ids: extra?.venue_id ? [extra.venue_id] : [] } });
+  },
+});
+await earlyController.requestDeal("fresh");
+assert.deepEqual(earlyRequest, { action: "request_deal", extra: { venue_id: "fresh" } }, "launch-deal interest must use the secured Early Access request boundary");
+assert.equal(earlyController.hasRequested("fresh"), true, "backend-confirmed launch request state should update the detail action");
 
 const activeDeals = [
   { id: "promoted", venueId: "fresh", title: "No cover before 10", description: "Tonight only", dealType: "cover", startsAt: new Date(Date.now() - 60000).toISOString(), endsAt: new Date(Date.now() + 3600000).toISOString(), isActive: true, isPromoted: true, promotionTier: "boost" },
@@ -248,7 +287,7 @@ const emptyDealEditorHtml = renderDealEditor({
 });
 assert.match(emptyDealEditorHtml, /Post tonight's deal to start tracking student interest/, "deal editor should guide venues with no active deal");
 assert.match(emptyDealEditorHtml, /No cover before 10/, "deal editor should include practical title examples");
-assert.match(emptyDealEditorHtml, /\$3 wells tonight/, "deal editor should include drink-special example copy");
+assert.match(emptyDealEditorHtml, /Food special/, "deal editor should include review-safe launch example copy");
 assert.match(emptyDealEditorHtml, /DJ starts at 10:30/, "deal editor should include event example copy");
 assert.match(emptyDealEditorHtml, /Keep it short/, "deal editor should tell venues to keep descriptions short");
 assert.match(emptyDealEditorHtml, /Promoted deals can increase visibility/, "deal editor should include paid-placement trust note");

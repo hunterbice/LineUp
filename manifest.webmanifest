@@ -1,7 +1,7 @@
 {
   "name": "LineUp",
   "short_name": "LineUp",
-  "description": "Know the move before you move. Check Tucson bar crowds, line waits, maps, active deals, and rewards from your phone.",
+  "description": "Join Arizona fall Early Access, save favorite venues, request launch deals, and check backend-confirmed crowd updates.",
   "id": "/",
   "start_url": "/index.html?source=pwa",
   "scope": "./",

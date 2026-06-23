@@ -13,6 +13,7 @@ const appEvent = read("supabase/functions/app-event-ingest/index.ts");
 const profileSummary = read("supabase/functions/device-profile-summary/index.ts");
 const analyticsIngest = read("supabase/functions/venue-analytics-ingest/index.ts");
 const accountSync = read("supabase/functions/account-sync/index.ts");
+const earlyAccess = read("supabase/functions/early-access/index.ts");
 const deviceSession = read("supabase/functions/device-session/index.ts");
 const locationIngest = read("supabase/functions/location-ingest/index.ts");
 const venueStatus = read("supabase/functions/venue-status-ingest/index.ts");
@@ -42,7 +43,7 @@ assert.match(migrations, /create policy "Venue staff can create plan-gated deals
 assert.match(migrations, /create policy "Venue staff can update plan-gated deals"[\s\S]*private\.can_promote_venue_deal\(venue_id, promotion_tier\)/, "deal updates must enforce venue and promotion eligibility");
 assert.match(migrations, /analytics_deal_matches_venue\(deal_id, venue_id\)/, "analytics RLS must bind deal IDs to venue IDs");
 
-for (const [label, source] of [["app events", appEvent], ["profile summary", profileSummary], ["analytics", analyticsIngest], ["account sync", accountSync]]) {
+for (const [label, source] of [["app events", appEvent], ["profile summary", profileSummary], ["analytics", analyticsIngest], ["account sync", accountSync], ["early access", earlyAccess]]) {
   assert.match(source, /verifyDeviceToken\(body\)/, `${label} must require signed device proof`);
   assert.match(source, /auth\.getUser\(token\)/, `${label} must validate the authenticated account token`);
 }
@@ -56,6 +57,13 @@ assert.match(analyticsIngest, /lat\|lng\|location\|coord\|position/i, "analytics
 assert.match(analyticsIngest, /deal_impression[\s\S]*duplicate/i, "analytics must deduplicate recent deal impressions");
 
 assert.match(accountSync, /verifyDeviceToken\(body\)[\s\S]*claimDeviceData\(supabase, user\.id, deviceId\)/, "device claims must require device proof and use auth user ID");
+assert.match(accountSync, /action === "delete_account"[\s\S]*deleteAccountData\(supabase, user\.id, deviceId\)[\s\S]*auth\.admin\.deleteUser\(user\.id\)/, "account deletion must remain self-bound to the authenticated account");
+assert.match(accountSync, /presence_snapshots[\s\S]*venue_checkins[\s\S]*reports[\s\S]*recompute_venue_live_status/, "account deletion must clear precise activity and remove report-derived truth");
+assert.match(earlyAccess, /verifyDeviceToken\(body\)/, "early access must require signed-device proof");
+assert.match(earlyAccess, /auth\.getUser\(token\)/, "early access must validate the authenticated account");
+assert.match(earlyAccess, /launch_deal_requests[\s\S]*>= 20/, "launch deal requests must be rate limited");
+assert.match(migrations, /revoke all on public\.launch_deal_requests from public, anon, authenticated/, "launch deal requests must reject direct browser access");
+assert.match(migrations, /launch_deal_interest[\s\S]*private\.can_manage_venue/, "launch deal aggregates must require venue authorization");
 assert.match(venueStatus, /accountAccess\(req, supabase, venueId\)[\s\S]*Venue account access required/, "venue status writes must verify role for requested venue");
 assert.match(ownerActions, /hasOwnerAccess\(req\)[\s\S]*Owner access required/, "owner actions must verify owner role before action routing");
 assert.match(ownerDashboard, /from\("venue_admins"\)[\s\S]*in\("role", \["owner", "admin"\]\)[\s\S]*Owner access denied/, "owner dashboard must verify an owner/admin database role and reject non-owner accounts");

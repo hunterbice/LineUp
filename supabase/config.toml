@@ -45,5 +45,8 @@ verify_jwt = false
 [functions.device-session]
 verify_jwt = false
 
+[functions.early-access]
+verify_jwt = false
+
 [analytics]
 enabled = false

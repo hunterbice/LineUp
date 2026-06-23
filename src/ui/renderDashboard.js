@@ -25,7 +25,7 @@ export function renderLiveDashboard({ list, renderBar }) {
   return renderRetentionDashboard({ list, favorites: [], recents: [], renderBar });
 }
 
-export function renderRetentionDashboard({ list, favorites, recents, renderBar, loading }) {
+export function renderRetentionDashboard({ list, favorites, recents, renderBar, loading, earlyAccess }) {
   const all = Array.isArray(list) ? list : [];
   const favoriteList = Array.isArray(favorites) ? favorites : [];
   const recentList = (Array.isArray(recents) ? recents : []).filter((bar) => !favoriteList.some((fav) => fav.id === bar.id));
@@ -36,7 +36,8 @@ export function renderRetentionDashboard({ list, favorites, recents, renderBar, 
     renderSection("Recently checked", recentList, renderBar, ""),
     renderSection("All nearby spots", remaining.length ? remaining : all, renderBar, ""),
   ].join("") : '<div class="emptyState"><b>No venues loaded yet</b><p>LineUp is waiting on the live venue feed. Try refreshing in a moment.</p><button onclick="location.reload()">Refresh</button></div>';
-  return `<div class="dashboardIntro"><h2>Where are you going tonight?</h2><p>Check the scene before you head out.</p></div>` + cards;
+  const earlyAccessHtml = earlyAccess ? `<section class="earlyAccessBanner"><span class="earlyAccessPill">ARIZONA FALL EARLY ACCESS</span><h2>Build your fall lineup.</h2><p>Save favorite spots and request launch deals now. Venue cards show backend-confirmed updates when available and clearly labeled typical patterns when recent data is limited.</p></section>` : "";
+  return earlyAccessHtml + `<div class="dashboardIntro"><h2>Where are you going tonight?</h2><p>Check the scene before you head out.</p></div>` + cards;
 }
 
 function renderDashboardSkeleton() {

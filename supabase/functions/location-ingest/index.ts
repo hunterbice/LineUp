@@ -244,8 +244,7 @@ Deno.serve(async (req: Request) => {
     const crowdLevel = String(body.crowd_level || "");
     if (!crowdLevels.has(crowdLevel)) return jsonResponse({ error: "Invalid crowd_level" }, 400, req);
     const waitMinutes = clampInt(body.wait_minutes, 0, 180, 0);
-    const note = typeof body.note === "string" ? body.note.slice(0, 500) : null;
-    const photoSignal = Boolean(body.photo_signal);
+    const photoSignal = false;
     const coverAmount = typeof body.cover_amount === "string" ? body.cover_amount.slice(0, 20) : null;
     const coverActive = Boolean(body.cover_active) && !!coverAmount;
 
@@ -255,7 +254,7 @@ Deno.serve(async (req: Request) => {
       wait_minutes: waitMinutes,
       cover_amount: coverAmount,
       cover_active: coverActive,
-      note,
+      note: null,
       photo_signal: photoSignal,
       source: "user_report",
       device_id: deviceId,
