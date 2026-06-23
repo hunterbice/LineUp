@@ -10,6 +10,7 @@ const navigationController = readFileSync(new URL("../src/controllers/navigation
 const dealService = readFileSync(new URL("../src/services/venueDealService.js", import.meta.url), "utf8");
 const dealController = readFileSync(new URL("../src/controllers/dealController.js", import.meta.url), "utf8");
 const dealRenderer = readFileSync(new URL("../src/ui/renderDeals.js", import.meta.url), "utf8");
+const dealsPageRenderer = readFileSync(new URL("../src/ui/renderDealsPage.js", import.meta.url), "utf8");
 const ownerRenderer = readFileSync(new URL("../src/ui/renderOwnerDashboard.js", import.meta.url), "utf8");
 const staffRenderer = readFileSync(new URL("../src/ui/renderVenueControls.js", import.meta.url), "utf8");
 const dealMigration = readFileSync(new URL("../supabase/migrations/202606050001_venue_deals_marketing_layer.sql", import.meta.url), "utf8");
@@ -78,7 +79,7 @@ if (!/venue_deals/.test(dealService) || /live_status/.test(dealService) || /crow
   failures.push("venueDealService should read/write venue_deals only, not venue live status truth");
 }
 
-if (/localStorage\./.test(dealService + dealController + dealRenderer)) {
+if (/localStorage\./.test(dealService + dealController + dealRenderer + dealsPageRenderer)) {
   failures.push("deal modules must not persist full deal/status truth to localStorage");
 }
 
@@ -88,6 +89,14 @@ if (!/Promoted/.test(dealRenderer)) {
 
 if (/crowd_level|wait_minutes|live_status/.test(dealRenderer)) {
   failures.push("deal rendering must not read or mutate live status fields directly");
+}
+
+if (/crowd_level|wait_minutes|live_status|confidence_score/.test(dealsPageRenderer)) {
+  failures.push("Deals page rendering must remain separate from live crowd truth fields");
+}
+
+if (!/No active deals right now/.test(dealsPageRenderer) || !/Check back closer to tonight/.test(dealsPageRenderer)) {
+  failures.push("Deals page must use the honest no-active-deals state");
 }
 
 if (!/Promoted deals can increase visibility/.test(dealRenderer) || !/crowd level, wait time, and confidence stay based on live status and reports/.test(dealRenderer)) {

@@ -145,8 +145,8 @@ async function main() {
     await page.locator(".setupGate button", { hasText: "Finish Setup" }).click();
     await page.waitForSelector("#livePage.active");
     await page.waitForSelector(".barcard .statusline");
-    await page.locator(".sectionlabel", { hasText: "TONIGHT’S DEALS" }).waitFor();
-    await page.locator(".dealCard", { hasText: "Promoted" }).waitFor();
+    if (await page.locator("#livePage .dealCard").count()) throw new Error("Live should not reuse full deal cards");
+    await page.locator(".dealBadge", { hasText: "No cover before 10" }).waitFor();
     if (await page.locator("text=Expired smoke deal").count()) throw new Error("Expired deals should not render");
     if (await page.locator("text=Future smoke deal").count()) throw new Error("Future deals should not render");
     if (await page.locator("text=Inactive smoke deal").count()) throw new Error("Inactive deals should not render");
@@ -167,11 +167,6 @@ async function main() {
       throw new Error("Recent venue cache should contain only venueId/viewedAt");
     }
     await page.locator(".sectionlabel", { hasText: "Recently checked" }).waitFor();
-    await page.locator(".dealCard").first().click();
-    await page.waitForSelector("#detail.open");
-    await page.locator(".dealDetailCard", { hasText: "No cover before 10" }).waitFor();
-    await page.locator("button[onclick='closeDetail()']").click();
-    await page.waitForSelector("#detail:not(.open)");
     await page.locator(".barcard").first().click();
     await page.waitForSelector("#detail.open");
     await page.locator(".tabs2 button", { hasText: "Intel" }).click();
@@ -195,8 +190,19 @@ async function main() {
     await page.waitForSelector("#mapPage.active");
     await page.locator(".navbtn[data-page='highlightsPage']").click();
     await page.waitForSelector("#highlightsPage.active");
-    await page.locator("#highlightsPage", { hasText: "What’s happening tonight?" }).waitFor();
-    await page.locator("#highlightsPage", { hasText: "BEST READ RIGHT NOW" }).waitFor();
+    await page.locator(".navbtn[data-page='highlightsPage']", { hasText: "Deals" }).waitFor();
+    await page.locator("#highlightsPage", { hasText: "Active deals right now" }).waitFor();
+    await page.locator("#highlightsPage .dealCard", { hasText: "Promoted" }).waitFor();
+    if (await page.locator("body", { hasText: "Pulse" }).count()) throw new Error("Pulse should not appear in user-facing UI");
+    if (await page.locator("text=Expired smoke deal").count()) throw new Error("Expired deals should not render");
+    if (await page.locator("text=Future smoke deal").count()) throw new Error("Future deals should not render");
+    if (await page.locator("text=Inactive smoke deal").count()) throw new Error("Inactive deals should not render");
+    await page.locator("#highlightsPage .dealCard").first().click();
+    await page.waitForSelector("#detail.open");
+    await page.locator("#activeDealSection .dealDetailCard", { hasText: "No cover before 10" }).waitFor();
+    await page.waitForFunction(() => document.activeElement?.id === "activeDealSection");
+    await page.locator("button[onclick='closeDetail()']").click();
+    await page.waitForSelector("#detail:not(.open)");
     await page.locator(".navbtn[data-page='profilePage']").click();
     await page.waitForSelector("#profilePage.active");
     const roleTabs = await page.locator("#roleNavButton").count();

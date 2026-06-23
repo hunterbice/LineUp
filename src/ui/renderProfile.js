@@ -22,6 +22,7 @@ export function renderRewardsHtml({ rewardViewState }) {
 }
 
 export function renderProfileQualityHtml(profileSummary) {
+  if (!profileSummary) return `<div class="sectionlabel">SIGNAL PROFILE</div><div class="card profileSkeleton" aria-label="Loading signal profile"><span class="skeletonLine short"></span><span class="skeletonLine title"></span><span class="skeletonLine"></span><div class="profileGrid"><span class="skeletonButton"></span><span class="skeletonButton"></span><span class="skeletonButton"></span></div></div>`;
   const profile = profileSummary || {};
   const score = Math.round(Number(profile.reliability_score||0.5)*100);
   const tier = profile.trust_tier || "new";
@@ -62,7 +63,7 @@ export function renderProfilePageHtml(view, ctx) {
       return `<button class="backBtn" onclick="profileBack()">${svg.back} Profile</button><div class="sectionlabel">PREFERENCES</div><div class="card permission"><b>Notifications</b><p class="muted intelCopy">Get future alerts when a favorite bar gets packed, a line gets short, events go live, or rewards update.</p><div class="rewardRule"><b>Status</b><span>${esc(cap(n))}</span></div><button class="submit" onclick="requestNotifications()">Enable Notifications</button></div><div class="card permission"><b>Location</b><p class="muted intelCopy">Enable location to improve nearby bar accuracy and live crowd reports while the app is open.</p><div class="locationStatus"><b>${esc(pc.title)}</b><span>${esc(pc.detail)}</span></div><div class="rewardRule"><b>Preference</b><span>${esc(cap(l))}</span></div><button class="submit" onclick="requestSetupLocation()">${presenceState?"Refresh Location":"Enable Location"}</button></div>`;
     },
     rewards() {
-      return `<button class="backBtn" onclick="profileBack()">${svg.back} Profile</button>${renderRewardsHtml({rewardViewState})}<details class="card photoPanel" open><summary>How to Earn <span class="muted">Open</span></summary><p class="muted intelCopy">Submit accurate crowd reports, add useful line photos, post highlights, report fake or outdated info, and use LineUp consistently.</p></details><details class="card photoPanel"><summary>What Rewards Can Be Used For <span class="muted">Open</span></summary><p class="muted intelCopy">Rewards are designed for future LineUp Skip credits, partner perks, and campus nightlife benefits once venue operations are ready.</p></details><details class="card photoPanel"><summary>Rules <span class="muted">Open</span></summary><p class="muted intelCopy">Points are server-backed, capped per night, and tied to verified account activity. Fake or spammy reports can lose trust or rewards.</p></details>`;
+      return `<button class="backBtn" onclick="profileBack()">${svg.back} Profile</button>${renderRewardsHtml({rewardViewState})}<details class="card photoPanel" open><summary>How to Earn <span class="muted">Open</span></summary><p class="muted intelCopy">Submit accurate crowd and line reports, check in near venues, flag outdated information, and use LineUp consistently.</p></details><details class="card photoPanel"><summary>What Rewards Can Be Used For <span class="muted">Open</span></summary><p class="muted intelCopy">Redeem a full points balance for a LineUp Skip when the reward is available.</p></details><details class="card photoPanel"><summary>Rules <span class="muted">Open</span></summary><p class="muted intelCopy">Points are server-backed, capped per night, and tied to verified account activity. Fake or spammy reports can lose trust or rewards.</p></details>`;
     },
     privacy() {
       const copy = legalCopy("privacy");
@@ -73,7 +74,7 @@ export function renderProfilePageHtml(view, ctx) {
       return `<button class="backBtn" onclick="profileBack()">${svg.back} Profile</button><div class="sectionlabel">TERMS</div><div class="card"><b>${copy.title}</b><p class="muted intelCopy">${copy.body}</p><div class="profileMenu">${menu("Privacy Policy","privacy","What LineUp collects and why",svg)}${menu("Terms of Service","terms","Use rules and limitations",svg)}</div></div>`;
     },
     help() {
-      return `<button class="backBtn" onclick="profileBack()">${svg.back} Profile</button><div class="sectionlabel">HELP</div><div class="card"><b>Support</b><p class="muted intelCopy">For now, send bugs, venue corrections, safety issues, or account questions to the LineUp owner. Owner tools can investigate abuse without exposing private identity publicly.</p><button class="submit" onclick="showToast('Support channel coming soon')">Contact Support</button></div>`;
+      return `<button class="backBtn" onclick="profileBack()">${svg.back} Profile</button><div class="sectionlabel">HELP</div><div class="card"><b>Support</b><p class="muted intelCopy">Report bugs, venue corrections, safety issues, or account concerns through the LineUp team. Owner tools can investigate abuse without exposing private identity publicly.</p></div>`;
     }
   };
   return (views[view] || views.home)();

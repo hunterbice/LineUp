@@ -5,13 +5,14 @@ import { createBarDetailController } from "../src/controllers/barDetailControlle
 import { createOwnerController } from "../src/controllers/ownerController.js";
 import { createReportController } from "../src/controllers/reportController.js";
 import { hydrateVenues } from "../src/controllers/retentionController.js";
-import { groupDealsByVenue, isDealCurrent, selectDashboardDeals } from "../src/controllers/dealController.js";
+import { createDealController, groupDealsByVenue, isDealCurrent, selectActiveDeals, selectDashboardDeals } from "../src/controllers/dealController.js";
 import { createVenueStaffController } from "../src/controllers/venueStaffController.js";
 import { venueAnalyticsTestHooks } from "../src/services/venueAnalyticsService.js";
 import { venueDealTestHooks } from "../src/services/venueDealService.js";
 import { renderDetailHtml, renderReportRows } from "../src/ui/renderBarDetail.js";
 import { renderRetentionDashboard } from "../src/ui/renderDashboard.js";
-import { renderDealBadge, renderDealEditor, renderDealPerformance, renderDealSection, renderVenueDealBlock } from "../src/ui/renderDeals.js";
+import { renderDealBadge, renderDealEditor, renderDealPerformance, renderVenueDealBlock } from "../src/ui/renderDeals.js";
+import { dealEndingCue, renderDealsPage } from "../src/ui/renderDealsPage.js";
 import { fallbackMapHtml } from "../src/ui/renderMap.js";
 import { renderOwnerDashboardHtml } from "../src/ui/renderOwnerDashboard.js";
 import { renderProfilePageHtml } from "../src/ui/renderProfile.js";
@@ -24,6 +25,11 @@ const cacheState = fs.readFileSync(path.join(root, "src/state/cacheState.js"), "
 const sw = fs.readFileSync(path.join(root, "sw.js"), "utf8");
 const publicSw = fs.readFileSync(path.join(root, "public/sw.js"), "utf8");
 const config = fs.readFileSync(path.join(root, "src/config.js"), "utf8");
+const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
+const styles = fs.readFileSync(path.join(root, "src/styles.css"), "utf8");
+const shellRenderer = fs.readFileSync(path.join(root, "src/ui/renderShell.js"), "utf8");
+const profileRenderer = fs.readFileSync(path.join(root, "src/ui/renderProfile.js"), "utf8");
+const dealsPageRenderer = fs.readFileSync(path.join(root, "src/ui/renderDealsPage.js"), "utf8");
 
 function ordered(source, patterns, label) {
   let cursor = -1;
@@ -49,8 +55,13 @@ ordered(main, [/ownerAction\("venue_live_update"/, /loadSupabaseStatus\(\)/, /ow
 ordered(main, [/ownerAction\("set_venue_status"/, /loadSupabaseStatus\(\)/, /ownerRequest\(\)/], "owner status flow");
 assert.doesNotMatch(main, /Local update saved|saved locally/, "staff/report UI should not claim local mutation");
 assert.equal(sw, publicSw, "public service worker must match root service worker");
-assert.equal(config.match(/APP_VERSION\s*=\s*"([^"]+)"/)?.[1], "v70", "APP_VERSION should be v70");
-assert.match(sw, /lineup-pwa-v70/, "service worker should be v70");
+assert.equal(config.match(/APP_VERSION\s*=\s*"([^"]+)"/)?.[1], "v71", "APP_VERSION should be v71");
+assert.match(sw, /lineup-pwa-v71/, "service worker should be v71");
+assert.match(html, /data-page="highlightsPage"[^>]*aria-label="Deals"/, "main navigation should expose Deals");
+assert.doesNotMatch(html, />Pulse</, "main navigation must not expose the retired Pulse label");
+assert.doesNotMatch(shellRenderer + profileRenderer + dealsPageRenderer, /coming soon|\bdemo\b/i, "public student copy should not expose unfinished or demo language");
+assert.match(styles, /\.field,select\.field,input\.field,textarea\.field\{[^}]*font-size:16px/, "mobile form controls should prevent iOS input zoom");
+assert.match(styles, /\.barcardSkeleton|\.dealCardSkeleton/, "Live and Deals should have structural skeleton states");
 
 const dealServiceSource = fs.readFileSync(path.join(root, "src/services/venueDealService.js"), "utf8");
 const dealRendererSource = fs.readFileSync(path.join(root, "src/ui/renderDeals.js"), "utf8");
@@ -86,10 +97,14 @@ const detailController = createBarDetailController({
   loadVenueReports: () => Promise.resolve(),
   renderDetail: () => calls.push("render"),
   openDetailSheet: () => calls.push("open"),
+  focusDealSection: () => calls.push("focusDeal"),
   showToast: () => calls.push("toast"),
 });
 detailController.open("venue_1");
 assert.deepEqual(calls, ["set", "recent:venue_1", "track", "render", "open"], "detail open should save only the recent venue ID after venue validation");
+calls = [];
+detailController.open("venue_1", { focusDeal: true });
+assert.deepEqual(calls, ["set", "recent:venue_1", "track", "render", "open", "focusDeal"], "deal navigation should open normal detail and then focus its deal section");
 
 const backendVenues = [{ id: "fresh", name: "Fresh backend venue", lvl: "busy" }, { id: "other", name: "Other venue", lvl: "slow" }];
 const hydrated = hydrateVenues([{ venueId: "missing", viewedAt: 1 }, { venueId: "other", viewedAt: 2 }], backendVenues);
@@ -98,8 +113,6 @@ const dashboardHtml = renderRetentionDashboard({
   list: backendVenues,
   favorites: [backendVenues[0]],
   recents: hydrated,
-  pulse: { title: "Tonight", meta: "Live" },
-  svg: { pulseTrend: "" },
   renderBar: (bar) => `<article class="barcard" data-id="${bar.id}">${bar.name}</article>`,
 });
 assert.match(dashboardHtml, /Your spots/, "dashboard should render favorites section");
@@ -123,12 +136,38 @@ assert.equal(groupedDeals.fresh[0].id, "promoted", "deals should group by venue 
 const selectedDeals = selectDashboardDeals({ deals: activeDeals, venues: backendVenues, favorites: [backendVenues[1]], recents: [] });
 assert.deepEqual(selectedDeals.map((deal) => deal.id), ["promoted", "standard"], "dashboard deals should hydrate against backend venues and exclude missing venues");
 assert.equal(selectedDeals.some((deal) => /expired|future|inactive/.test(deal.id)), false, "dashboard deals should exclude expired, future, and inactive rows");
+const dealsPageRows = selectActiveDeals({ deals: activeDeals, venues: backendVenues });
+assert.deepEqual(dealsPageRows.map((deal) => deal.id), ["promoted", "standard"], "Deals should show only current deals attached to current backend venues");
+const dealsPageHtml = renderDealsPage({ deals: dealsPageRows, venuesById: { fresh: backendVenues[0], other: backendVenues[1] }, loading: false });
+assert.match(dealsPageHtml, /Active deals right now/, "Deals page should explain its current-deal purpose");
+assert.match(dealsPageHtml, /No cover before 10/, "Deals page should render active deal titles");
+assert.match(dealsPageHtml, /Fresh backend venue/, "Deals page should hydrate venue names from backend venue data");
+assert.match(dealsPageHtml, /Promoted/, "Deals page should label promoted placement");
+assert.doesNotMatch(dealsPageHtml, /Fresh staff update|wait|confidence|Packed|Trending|Hot|Popular/i, "deal-first cards should not reuse live-status or fake popularity content");
+assert.match(renderDealsPage({ deals: [], venuesById: {}, loading: false }), /No active deals right now[\s\S]*Check back closer to tonight/, "Deals page should have the required honest empty state");
+assert.match(renderDealsPage({ deals: [], venuesById: {}, loading: true }), /dealCardSkeleton/, "Deals page should use structural skeletons while first loading");
+assert.equal(dealEndingCue({ endsAt: new Date(Date.now() + 25 * 60000).toISOString() }), "Ending soon", "deals ending within 30 minutes should use the stronger ending cue");
+assert.equal(dealEndingCue({ endsAt: new Date(Date.now() + 50 * 60000).toISOString() }), "Ends soon", "deals ending within 60 minutes should use the lighter ending cue");
+assert.equal(dealEndingCue({ endsAt: new Date(Date.now() + 90 * 60000).toISOString() }), "", "deals outside the urgency window should not use urgency copy");
 const originalVenue = structuredClone(backendVenues[0]);
-const dealHtml = renderDealSection({ deals: selectedDeals, venuesById: { fresh: backendVenues[0], other: backendVenues[1] }, signalState: () => ({ label: "Fresh staff update", detail: "Updated now" }) });
-assert.match(dealHtml, /Promoted/, "promoted deal card should be labeled");
 assert.match(renderDealBadge(activeDeals[1]), /\$3 wells/, "venue cards should show small active deal badges");
 assert.match(renderVenueDealBlock([activeDeals[0]]), /Venue posted/, "detail deal block should label venue-posted marketing");
+assert.match(renderVenueDealBlock([activeDeals[0]]), /id="activeDealSection"/, "detail deal block should expose a stable focus target");
 assert.deepEqual(backendVenues[0], originalVenue, "deal rendering must not mutate backend venue live status");
+let openedDeal = null;
+const tapController = createDealController({
+  supabaseClient: () => ({}),
+  activeDeals: () => activeDeals,
+  dealsByVenue: () => groupedDeals,
+  dealPerformanceByVenue: () => ({}),
+  analytics: { trackDealTap() { throw new Error("analytics offline"); } },
+  analyticsPayload: () => ({}),
+  openDetail(venueId, meta) { openedDeal = { venueId, meta }; },
+  showToast() {},
+  logError() {},
+});
+tapController.handleDealTap(activeDeals[0], "deals_tab");
+assert.deepEqual(openedDeal, { venueId: "fresh", meta: { source: "deals_tab", dealId: "promoted", focusDeal: true } }, "analytics failure must not block Deals navigation or detail focus");
 const normalizedDealPayload = venueDealTestHooks.normalizePayload({
   venueId: "fresh",
   title: "A".repeat(120),
@@ -220,7 +259,7 @@ assert.match(ownerVenueHtml, /LineUp Venue Tools/, "owner dashboard should be de
 assert.match(ownerVenueHtml, /track views, taps, and venue opens/i, "owner dashboard should explain deal performance value");
 assert.match(ownerVenueHtml, /Live crowd status stays separate from paid promotions/, "owner dashboard should explain promotion separation");
 assert.match(ownerVenueHtml, /Preview Student Page/, "owner dashboard should expose a student-facing preview shortcut");
-assert.doesNotMatch(emptyDealEditorHtml + performanceHtml + dealHtml, /\bTrending\b|\bHot\b|\bPacked\b/, "deal and performance copy must not invent popularity from analytics");
+assert.doesNotMatch(emptyDealEditorHtml + performanceHtml + dealsPageHtml, /\bTrending\b|\bHot\b|\bPacked\b/, "deal and performance copy must not invent popularity from analytics");
 
 const detailBase = {
   bar: { id: "fresh", name: "Fresh backend venue", tag: "Pub", address: "1 University", lvl: "busy", wait: 12, event: "", lastCall: "1:30 AM", momentum: "steady", confSignals: 2, sources: [] },

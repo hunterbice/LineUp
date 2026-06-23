@@ -56,34 +56,14 @@ export function renderDealBadge(deal) {
 export function renderVenueDealBlock(deals) {
   const rows = (Array.isArray(deals) ? deals : []).slice(0, 2);
   if (!rows.length) return "";
-  return '<div class="dealBlock"><div class="sectionlabel">TONIGHT HERE</div>' + rows.map(function(deal) {
+  return '<section class="dealBlock" id="activeDealSection" data-testid="active-deal-section" tabindex="-1"><div class="sectionlabel">ACTIVE DEAL</div>' + rows.map(function(deal) {
     return '<div class="dealDetailCard">' +
       '<div><b>' + esc(deal.title) + '</b>' +
       (deal.description ? '<p>' + esc(deal.description) + '</p>' : '') +
       '<span>Venue posted · ends ' + esc(timeLabel(deal.endsAt)) + '</span></div>' +
       (deal.isPromoted ? '<em>Promoted</em>' : '') +
       '</div>';
-  }).join("") + '</div>';
-}
-
-export function renderDealSection({ deals, venuesById, signalState }) {
-  const list = Array.isArray(deals) ? deals : [];
-  if (!list.length) return "";
-  return '<div class="sectionlabel">TONIGHT’S DEALS</div><div class="dealIntro">Specials and events while you’re deciding where to go.</div>' +
-    list.map(function(deal) {
-      const venue = venuesById && venuesById[deal.venueId];
-      if (!venue) return "";
-      const signal = signalState ? signalState(venue) : { label: "Live source", detail: "" };
-      return '<article class="dealCard" data-deal-id="' + esc(deal.id) + '" data-deal-venue="' + esc(deal.venueId) + '">' +
-        '<div class="dealCardTop"><span>' + esc(dealTypeLabel(deal.dealType)) + '</span>' +
-        (deal.isPromoted ? '<em>Promoted</em>' : '') + '</div>' +
-        '<h3>' + esc(deal.title) + '</h3>' +
-        '<p>' + esc(deal.description || venue.name) + '</p>' +
-        '<div class="dealMeta"><b>' + esc(venue.name) + '</b><span>Ends ' + esc(timeLabel(deal.endsAt)) + '</span></div>' +
-        '<div class="dealTrust">' + esc(signal.label) + ' · ' + esc(signal.detail) + '</div>' +
-        '<button class="cardAction primary" data-deal-open="' + esc(deal.id) + '">Details</button>' +
-      '</article>';
-    }).join("");
+  }).join("") + '</section>';
 }
 
 export function renderDealEditor({ bar, deal, subscription, prefix, isOwner }) {
@@ -115,6 +95,9 @@ export function renderDealEditor({ bar, deal, subscription, prefix, isOwner }) {
 
 export function renderDealPerformance({ rows, loading, error }) {
   rows = Array.isArray(rows) ? rows : [];
+  if (loading) {
+    return '<div class="dealPerformance"><div class="sectionlabel">DEAL PERFORMANCE</div><div class="dealPerfCard" aria-label="Loading deal performance"><span class="skeletonLine medium"></span><div class="dealPerfGrid"><span class="skeletonButton"></span><span class="skeletonButton"></span><span class="skeletonButton"></span><span class="skeletonButton"></span></div></div></div>';
+  }
   if (loading || error || !rows.length) {
     return '<div class="dealPerformance">' +
       '<div class="sectionlabel">DEAL PERFORMANCE</div>' +

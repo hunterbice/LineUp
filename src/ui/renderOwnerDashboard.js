@@ -18,7 +18,7 @@ export function ownerVenueOptions(rows, selected) {
 }
 
 export function loadingOwnerDashboardHtml() {
-  return '<div class="sectionlabel">OWNER MODE</div><div class="card"><b>Loading venue tools</b><p class="muted intelCopy">Getting live status, deal, and performance tools ready.</p></div>';
+  return '<div class="sectionlabel">OWNER MODE</div><div class="ownerGrid skeletonGrid" aria-label="Loading venue tools"><div class="ownerMetric"><span class="skeletonLine short"></span><span class="skeletonLine title"></span></div><div class="ownerMetric"><span class="skeletonLine short"></span><span class="skeletonLine title"></span></div></div><div class="card"><span class="skeletonLine medium"></span><span class="skeletonLine"></span><span class="skeletonButton"></span></div>';
 }
 
 export function renderOwnerDashboardHtml({ data, controlVenues, firstVenueId, levels, dealEditor }) {

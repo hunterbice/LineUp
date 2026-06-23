@@ -21,34 +21,28 @@ export function renderBarCard(bar, helpers) {
     helpers.confColor(signal.tone) + '"></span>' + esc(signal.label) + ' <span class="updated">' + esc(action) + '</span></div><div class="cardActions"><button class="cardAction primary" data-id="' + bar.id + '">Details</button><button class="cardAction quickReport" data-report="' + bar.id + '">Report</button></div></article>';
 }
 
-export function areaPulseCopy({ list, area, areaName, isFavorite }) {
-  const packed = list.filter((bar) => bar.lvl === "packed").length;
-  const busy = list.filter((bar) => bar.lvl === "busy").length;
-  const active = busy + packed;
-  const favoriteCount = list.filter((bar) => isFavorite(bar.id)).length;
-  const lead = list.find((bar) => bar.lvl === "packed") || list.find((bar) => bar.lvl === "busy");
-  const suffix = favoriteCount ? favoriteCount + " favorites pinned first" : "Pulse can plan the move";
-  if ((packed >= 1 && active >= 2) || active >= 3) return { title: areaName(area) + " is heating up", meta: busy + " busy · " + packed + " packed · " + suffix };
-  if (lead) return { title: lead.name + " is picking up", meta: areaName(area) + " has " + active + " active spot" + (active === 1 ? "" : "s") + " · " + suffix };
-  return { title: areaName(area) + " is calm right now", meta: "No busy venues yet · " + suffix };
+export function renderLiveDashboard({ list, renderBar }) {
+  return renderRetentionDashboard({ list, favorites: [], recents: [], renderBar });
 }
 
-export function renderLiveDashboard({ list, pulse, svg, renderBar }) {
-  return renderRetentionDashboard({ list, favorites: [], recents: [], pulse, svg, renderBar });
-}
-
-export function renderRetentionDashboard({ list, favorites, recents, pulse, svg, renderBar, dealSection }) {
+export function renderRetentionDashboard({ list, favorites, recents, renderBar, loading }) {
   const all = Array.isArray(list) ? list : [];
   const favoriteList = Array.isArray(favorites) ? favorites : [];
   const recentList = (Array.isArray(recents) ? recents : []).filter((bar) => !favoriteList.some((fav) => fav.id === bar.id));
   const featuredIds = new Set(favoriteList.concat(recentList).map((bar) => bar.id));
   const remaining = all.filter((bar) => !featuredIds.has(bar.id));
-  const cards = all.length ? [
+  const cards = loading && !all.length ? renderDashboardSkeleton() : all.length ? [
     renderSection("Your spots", favoriteList, renderBar, '<div class="emptyState retentionPrompt"><b>No favorite spots yet</b><p>Tap the star on a spot to pin it here for faster checks later.</p></div>'),
     renderSection("Recently checked", recentList, renderBar, ""),
     renderSection("All nearby spots", remaining.length ? remaining : all, renderBar, ""),
   ].join("") : '<div class="emptyState"><b>No venues loaded yet</b><p>LineUp is waiting on the live venue feed. Try refreshing in a moment.</p><button onclick="location.reload()">Refresh</button></div>';
-  return `<div class="dashboardIntro"><h2>Where are you going tonight?</h2><p>Check the scene before you head out.</p></div><div class="pulsecard" onclick="setPage('highlightsPage')"><div class="pulseicon">${svg.pulseTrend}</div><div><b>${esc(pulse.title)}</b><span>${esc(pulse.meta)}</span></div><div class="chev"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2"><polyline points="9 18 15 12 9 6"/></svg></div></div>` + (dealSection || "") + cards;
+  return `<div class="dashboardIntro"><h2>Where are you going tonight?</h2><p>Check the scene before you head out.</p></div>` + cards;
+}
+
+function renderDashboardSkeleton() {
+  return '<div class="skeletonGrid" aria-label="Loading live venues">' + Array.from({ length: 3 }, function() {
+    return '<div class="barcard barcardSkeleton" aria-hidden="true"><div class="skeletonCardTop"><span class="skeletonAvatar"></span><div><span class="skeletonLine title"></span><span class="skeletonLine medium"></span></div></div><span class="skeletonLine"></span><span class="skeletonLine short"></span><span class="skeletonButton"></span></div>';
+  }).join("") + '</div>';
 }
 
 function renderSection(title, bars, renderBar, emptyHtml) {

@@ -35,7 +35,18 @@ export function selectDashboardDeals({ deals, venues, favorites, recents }) {
     .concat(take(() => true));
 }
 
+export function selectActiveDeals({ deals, venues, nowMs = Date.now() }) {
+  const venueIds = new Set((Array.isArray(venues) ? venues : []).map((venue) => venue && venue.id).filter(Boolean));
+  return (Array.isArray(deals) ? deals : [])
+    .filter((deal) => isDealCurrent(deal, nowMs) && venueIds.has(deal.venueId))
+    .slice()
+    .sort(function(a, b) {
+      return Number(!!b.isPromoted) - Number(!!a.isPromoted) || Date.parse(a.endsAt) - Date.parse(b.endsAt);
+    });
+}
+
 export function createDealController(deps) {
+  const impressedDeals = new Set();
   function client() { return deps.supabaseClient && deps.supabaseClient(); }
   function performanceState() { return deps.dealPerformanceByVenue ? deps.dealPerformanceByVenue() : {}; }
   function setDeals(deals) {
@@ -63,12 +74,15 @@ export function createDealController(deps) {
     return deps.dealService.fetchActiveDeals(client()).then(function(deals) {
       setDeals(deals);
       if (renderAfter) deps.renderAll();
-      deals.slice(0, 12).forEach(function(deal) {
-        deps.analytics.trackDealImpression(client(), deps.analyticsPayload(deal.venueId, deal.id, { surface: "dashboard" }));
-      });
       return deals;
     }).catch(function(error) {
-      deps.setDealState({ activeDeals: [], dealsByVenue: {}, dealLoading: false, dealError: "Deals unavailable" });
+      const existing = deps.activeDeals();
+      deps.setDealState({
+        activeDeals: existing,
+        dealsByVenue: groupDealsByVenue(existing),
+        dealLoading: false,
+        dealError: "Deals unavailable",
+      });
       if (deps.logError) deps.logError("active_deals_failed", error);
       if (renderAfter) deps.renderAll();
       return [];
@@ -114,10 +128,34 @@ export function createDealController(deps) {
     return selectDashboardDeals(Object.assign({}, context, { deals: deps.activeDeals() })).slice(0, 6);
   }
 
-  function handleDealTap(deal) {
+  function dealsPageDeals(venues) {
+    return selectActiveDeals({ deals: deps.activeDeals(), venues: venues });
+  }
+
+  function trackVisibleDeals(deals, surface) {
+    (Array.isArray(deals) ? deals : []).slice(0, 12).forEach(function(deal) {
+      const key = (surface || "deals_tab") + ":" + deal.id;
+      if (impressedDeals.has(key)) return;
+      impressedDeals.add(key);
+      try {
+        const tracked = deps.analytics.trackDealImpression(client(), deps.analyticsPayload(deal.venueId, deal.id, { surface: surface || "deals_tab" }));
+        if (tracked && tracked.catch) tracked.catch(function(error) { if (deps.logError) deps.logError("deal_impression_analytics_failed", error); });
+      } catch (error) {
+        if (deps.logError) deps.logError("deal_impression_analytics_failed", error);
+      }
+    });
+  }
+
+  function handleDealTap(deal, surface) {
     if (!deal || !deal.venueId) return deps.showToast("Deal unavailable");
-    deps.analytics.trackDealTap(client(), deps.analyticsPayload(deal.venueId, deal.id, { surface: "dashboard" }));
-    deps.openDetail(deal.venueId, { source: "deal", dealId: deal.id });
+    const source = surface || "deals_tab";
+    try {
+      const tracked = deps.analytics.trackDealTap(client(), deps.analyticsPayload(deal.venueId, deal.id, { surface: source }));
+      if (tracked && tracked.catch) tracked.catch(function(error) { if (deps.logError) deps.logError("deal_tap_analytics_failed", error); });
+    } catch (error) {
+      if (deps.logError) deps.logError("deal_tap_analytics_failed", error);
+    }
+    deps.openDetail(deal.venueId, { source: source, dealId: deal.id, focusDeal: true });
   }
 
   function saveFromForm(venueId, prefix) {
@@ -184,6 +222,8 @@ export function createDealController(deps) {
     dealsForVenue,
     primaryDealForVenue,
     dashboardDeals,
+    dealsPageDeals,
+    trackVisibleDeals,
     handleDealTap,
     saveFromForm,
     deactivate,

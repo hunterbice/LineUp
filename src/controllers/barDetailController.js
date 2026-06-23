@@ -14,6 +14,7 @@ export function createBarDetailController(deps) {
       if (reportLoad && reportLoad.catch) reportLoad.catch(function(){});
       deps.renderDetail();
       deps.openDetailSheet();
+      if (meta && meta.focusDeal && deps.focusDealSection) deps.focusDealSection();
     },
     close() {
       deps.closeDetailSheet();
