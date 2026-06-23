@@ -34,4 +34,5 @@ Priority 17 must add the iOS location purpose string from `docs/location-permiss
 - Edge Functions `early-access`, `account-sync`, `reports-feed`, and `location-ingest` are deployed and active.
 - Live security smoke passed with two disposable users, signed devices, direct-write denials, cross-user/cross-venue denials, Early Access join/request, and self-only deletion.
 - `npm run smoke:source`, `npm run smoke:reliability`, `npm run smoke:pwa`, `npm run smoke:security`, `npm run build`, `npm run smoke:app`, and `npm test` pass at v73.
-- Public deployment and native-wrapper checks remain pending until the v73 commit is pushed and Priority 17 begins.
+- GitHub Pages deployment `28055235732` completed successfully. `https://get-lineup.app/sw.js` serves `lineup-pwa-v73`; both icon cache-busters are `?v=73`; Privacy, Terms, and Support return HTTP 200; and the deployed bundle contains the Early Access, launch-deal request, account deletion, and Deals surfaces.
+- Native-wrapper checks remain intentionally pending until Priority 17.
