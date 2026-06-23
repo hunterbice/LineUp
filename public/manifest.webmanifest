@@ -1,15 +1,15 @@
 {
   "name": "LineUp",
   "short_name": "LineUp",
-  "description": "Know the move before you move. Check Tucson bar crowds, line waits, maps, Pulse plans, and rewards from your phone.",
+  "description": "Know the move before you move. Check Tucson bar crowds, line waits, maps, active deals, and rewards from your phone.",
   "id": "/",
   "start_url": "/index.html?source=pwa",
   "scope": "./",
   "display": "standalone",
   "display_override": ["standalone", "window-controls-overlay", "minimal-ui", "browser"],
   "orientation": "portrait",
-  "background_color": "#07080B",
-  "theme_color": "#07080B",
+  "background_color": "#F5F7FB",
+  "theme_color": "#F5F7FB",
   "launch_handler": {
     "client_mode": "navigate-existing"
   },
@@ -56,10 +56,10 @@
       "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
     },
     {
-      "name": "Pulse Planner",
-      "short_name": "Pulse",
-      "description": "Open the nightlife planner.",
-      "url": "/index.html?source=shortcut-pulse&page=highlightsPage",
+      "name": "Active Deals",
+      "short_name": "Deals",
+      "description": "Open active venue deals.",
+      "url": "/index.html?source=shortcut-deals&page=highlightsPage",
       "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
     }
   ]

@@ -30,6 +30,10 @@ const styles = fs.readFileSync(path.join(root, "src/styles.css"), "utf8");
 const shellRenderer = fs.readFileSync(path.join(root, "src/ui/renderShell.js"), "utf8");
 const profileRenderer = fs.readFileSync(path.join(root, "src/ui/renderProfile.js"), "utf8");
 const dealsPageRenderer = fs.readFileSync(path.join(root, "src/ui/renderDealsPage.js"), "utf8");
+const manifest = fs.readFileSync(path.join(root, "manifest.webmanifest"), "utf8");
+const publicManifest = fs.readFileSync(path.join(root, "public/manifest.webmanifest"), "utf8");
+const offline = fs.readFileSync(path.join(root, "offline.html"), "utf8");
+const publicOffline = fs.readFileSync(path.join(root, "public/offline.html"), "utf8");
 
 function ordered(source, patterns, label) {
   let cursor = -1;
@@ -55,10 +59,23 @@ ordered(main, [/ownerAction\("venue_live_update"/, /loadSupabaseStatus\(\)/, /ow
 ordered(main, [/ownerAction\("set_venue_status"/, /loadSupabaseStatus\(\)/, /ownerRequest\(\)/], "owner status flow");
 assert.doesNotMatch(main, /Local update saved|saved locally/, "staff/report UI should not claim local mutation");
 assert.equal(sw, publicSw, "public service worker must match root service worker");
-assert.equal(config.match(/APP_VERSION\s*=\s*"([^"]+)"/)?.[1], "v71", "APP_VERSION should be v71");
-assert.match(sw, /lineup-pwa-v71/, "service worker should be v71");
+assert.equal(config.match(/APP_VERSION\s*=\s*"([^"]+)"/)?.[1], "v72", "APP_VERSION should be v72");
+assert.match(sw, /lineup-pwa-v72/, "service worker should be v72");
 assert.match(html, /data-page="highlightsPage"[^>]*aria-label="Deals"/, "main navigation should expose Deals");
 assert.doesNotMatch(html, />Pulse</, "main navigation must not expose the retired Pulse label");
+assert.match(html, /data-theme="light"/, "HTML should default to light mode");
+assert.doesNotMatch(html, /data-theme="dark"|color-scheme" content="dark"|black-translucent/, "dark browser metadata must be removed");
+assert.match(html, /theme-color" content="#F5F7FB"/, "HTML theme color should match the light app canvas");
+assert.equal(manifest, publicManifest, "root and public manifests should match");
+assert.equal(offline, publicOffline, "root and public offline pages should match");
+assert.match(manifest, /"background_color": "#F5F7FB"/, "manifest background should be light");
+assert.match(manifest, /"theme_color": "#F5F7FB"/, "manifest theme should be light");
+assert.match(offline, /background:#F5F7FB/, "offline page canvas should be light");
+assert.match(styles, /--bg:#F5F7FB/, "app background token should be the clean light canvas");
+assert.match(styles, /--card:#FFFFFF/, "app card token should be white");
+assert.match(styles, /--brand:#2563EB/, "brand token should use clean blue");
+assert.doesNotMatch(styles, /--(?:bg|surface|card|brand):(?:#12151B|#191D24|#1D222A|#63D7CC)/, "old dark and teal root tokens must not return");
+assert.doesNotMatch(main, /mapbox:\/\/styles\/mapbox\/dark-v11/, "maps should not use the dark style");
 assert.doesNotMatch(shellRenderer + profileRenderer + dealsPageRenderer, /coming soon|\bdemo\b/i, "public student copy should not expose unfinished or demo language");
 assert.match(styles, /\.field,select\.field,input\.field,textarea\.field\{[^}]*font-size:16px/, "mobile form controls should prevent iOS input zoom");
 assert.match(styles, /\.barcardSkeleton|\.dealCardSkeleton/, "Live and Deals should have structural skeleton states");

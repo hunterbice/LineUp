@@ -12,6 +12,8 @@ const installPromptJs = fs.readFileSync(path.join(root, "src/services/installPro
 const publicSwPath = path.join(root, "public/sw.js");
 const publicSw = fs.existsSync(publicSwPath) ? fs.readFileSync(publicSwPath, "utf8") : null;
 const publicManifest = JSON.parse(fs.readFileSync(path.join(root, "public/manifest.webmanifest"), "utf8"));
+const offline = fs.readFileSync(path.join(root, "offline.html"), "utf8");
+const publicOffline = fs.readFileSync(path.join(root, "public/offline.html"), "utf8");
 
 const requiredManifest = ["name", "short_name", "start_url", "scope", "display", "icons"];
 const missingManifest = requiredManifest.filter((key) => !manifest[key]);
@@ -43,13 +45,24 @@ if (!/CACHE_NAME\s*=\s*"lineup-pwa-v\d+"/.test(sw)) throw new Error("Service wor
 const appVersion = configJs.match(/APP_VERSION\s*=\s*"([^"]+)"/)?.[1];
 const swVersion = sw.match(/CACHE_NAME\s*=\s*"lineup-pwa-(v\d+)"/)?.[1];
 if (!appVersion || !swVersion || appVersion !== swVersion) throw new Error(`APP_VERSION (${appVersion}) must match service worker (${swVersion})`);
-if (appVersion !== "v71") throw new Error(`APP_VERSION should be v71, found ${appVersion}`);
+if (appVersion !== "v72") throw new Error(`APP_VERSION should be v72, found ${appVersion}`);
 if (!/offline\.html/.test(sw)) throw new Error("Service worker offline fallback missing");
 if (publicSw !== null && publicSw !== sw) throw new Error("public/sw.js must match root sw.js because Vite deploys the public copy");
 if (!/url\.pathname\.endsWith\("\.js"\)/.test(sw) || !/url\.pathname\.endsWith\("\.css"\)/.test(sw)) throw new Error("Service worker should network-refresh JS/CSS chunks after deploy");
 
-if (!/href="\/icons\/favicon-32\.png\?v=71"/.test(html)) throw new Error("favicon link should use the v71 LineUp icon asset");
-if (!/href="\/icons\/apple-touch-icon\.png\?v=71"/.test(html)) throw new Error("apple-touch-icon link should use the v71 LineUp icon asset");
+if (!/href="\/icons\/favicon-32\.png\?v=72"/.test(html)) throw new Error("favicon link should use the v72 LineUp icon asset");
+if (!/href="\/icons\/apple-touch-icon\.png\?v=72"/.test(html)) throw new Error("apple-touch-icon link should use the v72 LineUp icon asset");
+if (!/data-theme="light"/.test(html) || /data-theme="dark"/.test(html)) throw new Error("app shell should default to light mode");
+if (!/<meta name="theme-color" content="#F5F7FB">/.test(html) || !/<meta name="color-scheme" content="light">/.test(html)) throw new Error("app shell metadata should use the light theme");
+if (manifest.theme_color !== "#F5F7FB" || manifest.background_color !== "#F5F7FB") throw new Error("root manifest should use the light app shell colors");
+if (publicManifest.theme_color !== "#F5F7FB" || publicManifest.background_color !== "#F5F7FB") throw new Error("public manifest should use the light app shell colors");
+if (JSON.stringify(manifest) !== JSON.stringify(publicManifest)) throw new Error("root and public manifests should match");
+if (offline !== publicOffline) throw new Error("root and public offline pages should match");
+if (!/theme-color" content="#F5F7FB"/.test(offline) || !/color-scheme" content="light"/.test(offline) || !/background:#F5F7FB/.test(offline)) throw new Error("offline page should use the light app shell");
+if (/Pulse Planner|shortcut-pulse/.test(JSON.stringify(manifest))) throw new Error("manifest shortcuts should expose Deals, not Pulse");
+if (!/Active Deals/.test(JSON.stringify(manifest))) throw new Error("manifest should expose the Deals shortcut");
+if (/mapbox:\/\/styles\/mapbox\/dark-v11/.test(mainJs)) throw new Error("Mapbox must not use the dark style in light mode");
+if (!/mapbox:\/\/styles\/mapbox\/streets-v12/.test(mainJs) || !/mapbox:\/\/styles\/mapbox\/light-v11/.test(mainJs)) throw new Error("public and owner maps should use light Mapbox styles");
 if (!/src="\/icons\/icon-192\.png"/.test(html + renderShellJs)) throw new Error("sign-in/install app icon should use the canonical LineUp icon-192 asset");
 if (!/"icons\/icon-192\.png"/.test(JSON.stringify(manifest)) || !/"icons\/icon-192\.png"/.test(JSON.stringify(publicManifest))) {
   throw new Error("root and public manifests should use the canonical LineUp icon-192 asset");

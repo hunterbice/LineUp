@@ -145,6 +145,23 @@ async function main() {
     await page.locator(".setupGate button", { hasText: "Finish Setup" }).click();
     await page.waitForSelector("#livePage.active");
     await page.waitForSelector(".barcard .statusline");
+    const lightMode = await page.evaluate(() => {
+      const colorTotal = (value) => (value.match(/[\d.]+/g) || []).slice(0, 3).reduce((sum, part) => sum + Number(part), 0);
+      const body = getComputedStyle(document.body).backgroundColor;
+      const card = getComputedStyle(document.querySelector(".barcard")).backgroundColor;
+      const nav = getComputedStyle(document.querySelector(".bottomnav")).backgroundColor;
+      return {
+        body,
+        card,
+        nav,
+        bodyLight: colorTotal(body) > 600,
+        cardLight: colorTotal(card) > 600,
+        navLight: colorTotal(nav) > 600,
+        noOverflow: document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+      };
+    });
+    if (!lightMode.bodyLight || !lightMode.cardLight || !lightMode.navLight) throw new Error(`Expected light runtime surfaces: ${JSON.stringify(lightMode)}`);
+    if (!lightMode.noOverflow) throw new Error("Light mode should not introduce horizontal overflow at 390px");
     if (await page.locator("#livePage .dealCard").count()) throw new Error("Live should not reuse full deal cards");
     await page.locator(".dealBadge", { hasText: "No cover before 10" }).waitFor();
     if (await page.locator("text=Expired smoke deal").count()) throw new Error("Expired deals should not render");
