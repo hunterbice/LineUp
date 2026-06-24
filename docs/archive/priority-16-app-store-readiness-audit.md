@@ -1,3 +1,5 @@
+> Archived historical document. Not canonical for the native Swift rebuild. See `AGENTS.md` and `docs/native-*` for current direction.
+
 # Priority 16 App Store Readiness Audit
 
 Audit target: LineUp web/PWA at v72 before the iOS wrapper pass.

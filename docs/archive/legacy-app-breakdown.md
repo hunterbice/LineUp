@@ -1,3 +1,5 @@
+> Archived historical document. Not canonical for the native Swift rebuild. See `AGENTS.md` and `docs/native-*` for current direction.
+
 # LineUp App Breakdown
 
 ## Executive Summary

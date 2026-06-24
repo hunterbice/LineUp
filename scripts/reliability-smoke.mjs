@@ -50,6 +50,26 @@ const locationIngest = fs.readFileSync(path.join(root, "supabase/functions/locat
 const reportsFeed = fs.readFileSync(path.join(root, "supabase/functions/reports-feed/index.ts"), "utf8");
 const eventMigration = fs.readFileSync(path.join(root, "supabase/migrations/202606230002_current_night_events.sql"), "utf8");
 const legalPages = ["privacy", "terms", "support"].map((name) => fs.readFileSync(path.join(root, `public/legal/${name}.html`), "utf8")).join("\n");
+const nativeDocNames = [
+  "native-rebuild-product-spec.md",
+  "native-api-contract.md",
+  "native-screen-state-inventory.md",
+  "native-location-services-spec.md",
+  "native-push-notification-spec.md",
+  "native-v1-scope.md",
+  "swift-feasibility-spike-plan.md",
+  "native-swift-rebuild-risk-map.md",
+  "native-rebuild-readiness-audit.md",
+];
+const nativeDocs = nativeDocNames.map((name) => fs.readFileSync(path.join(root, "docs", name), "utf8")).join("\n");
+const agentRules = fs.readFileSync(path.join(root, "AGENTS.md"), "utf8");
+const readme = fs.readFileSync(path.join(root, "README.md"), "utf8");
+const archivedDocs = [
+  "legacy-pwa-app-store-readiness.md",
+  "legacy-app-breakdown.md",
+  "legacy-master-handoff.md",
+  "priority-16-app-store-readiness-audit.md",
+].map((name) => fs.readFileSync(path.join(root, "docs", "archive", name), "utf8"));
 
 function ordered(source, patterns, label) {
   let cursor = -1;
@@ -96,6 +116,13 @@ assert.match(styles, /--card:#FFFFFF/, "app card token should be white");
 assert.match(styles, /--brand:#2563EB/, "brand token should use clean blue");
 assert.doesNotMatch(styles, /--(?:bg|surface|card|brand):(?:#12151B|#191D24|#1D222A|#63D7CC)/, "old dark and teal root tokens must not return");
 assert.doesNotMatch(main, /mapbox:\/\/styles\/mapbox\/dark-v11/, "maps should not use the dark style");
+assert.match(agentRules + readme, /fully native SwiftUI/i, "canonical agent and README guidance should identify the fully native SwiftUI direction");
+assert.match(agentRules + nativeDocs, /Supabase is (?:authoritative|the product source of truth)/i, "native guidance should preserve Supabase source of truth");
+assert.doesNotMatch(agentRules + readme + nativeDocs, /LineUp is (?:frontend-only|front-end only|a static PWA)|There is no backend|localStorage (?:is|as) (?:the )?source of truth/i, "canonical native guidance must not restore obsolete frontend-only or local-storage truth claims");
+assert.match(nativeDocs, /APNs token (?:sync|registration)[\s\S]*(?:missing|P0)/i, "native guidance should make the missing APNs backend contract explicit");
+assert.match(nativeDocs, /Core Location[\s\S]*foreground/i, "native guidance should specify foreground Core Location");
+assert.match(nativeDocs, /5(?:\s*:\s*00)? AM America\/Phoenix/i, "native guidance should preserve the current-night boundary");
+archivedDocs.forEach((source) => assert.match(source, /Archived historical document\. Not canonical for the native Swift rebuild\./, "every stale handoff should carry a non-canonical archive warning"));
 assert.doesNotMatch(main + shellRenderer + profileRenderer, /Add to Home Screen|Install LineUp|beforeinstallprompt|maybeShowAfterSplash/, "student runtime must not retain install promotion behavior");
 assert.doesNotMatch(main, /function renderStats|NIGHT INTEL|Signal Profile/, "retired Intel and Signal Profile renderers must not remain reachable");
 assert.match(shellRenderer, /togglePasswordVisibility\('authPassword',this\)/, "auth password field should expose an accessible visibility toggle");

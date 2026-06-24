@@ -1,6 +1,6 @@
 # LineUp App Privacy Label Inventory
 
-This inventory is intentionally conservative. App Store Connect answers must be reviewed again against the native wrapper and production configuration before submission.
+This inventory is intentionally conservative. App Store Connect answers must be reviewed again against the fully native SwiftUI implementation and production configuration before submission.
 
 | Data type | Where collected | Purpose | Linked to user? | Tracking? | Shared with venues? | Retention/deletion | Evidence |
 | --- | --- | --- | --- | --- | --- | --- | --- |

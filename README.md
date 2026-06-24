@@ -2,265 +2,117 @@
 
 **Know Before You Go.**
 
-LineUp is the web product reference for a future native University of Arizona nightlife app. It presents backend-confirmed crowd status, estimated line waits, current deals, and venue details in a clean mobile interface. The web build remains deployable for product validation, but install prompts and Add to Home Screen promotion are intentionally absent.
+LineUp is a University of Arizona nightlife decision app. It presents backend-confirmed venue status, line estimates, freshness/confidence, active deals, and current-night structured reports without pretending sparse data is live proof.
 
-Live at: [get-lineup.app](https://get-lineup.app)
+The committed web app at v75 is the product/UX, backend-contract, security, and test reference for a future **fully native SwiftUI iOS app**. It remains deployable for validation. It is not the native architecture, and LineUp is not pursuing a WebView, Capacitor, or Add-to-Home-Screen iOS strategy.
 
----
+## Canonical Documentation
 
-## Features
+Start here:
 
-- **Live tab** — real-time crowd level (QUIET / SLOW / BUSY / PACKED), line wait, and confidence signal for every active venue
-- **University / Downtown tabs** — two area views covering Main Gate and 4th Ave / Congress
-- **Venue detail** — view backend-confirmed live activity, current-night reports, active deals, hours, directions, check-in, and reporting actions
-- **Deals** — deal-first active venue specials with direct navigation to the venue's Deals view
-- **Map** — draggable pin map with geofence and color-coded crowd indicators
-- **Favorites** — pin bars to the top of the live list
-- **Swipe navigation** — swipe left/right to move between venues inside a detail sheet; swipe down to close
-- **Offline shell** — service worker app-shell caching keeps the web preview usable offline
-> Note: LineUp is no longer positioned as a PWA / Add-to-Home-Screen product. The current web app is the product/UX reference for a future native SwiftUI iOS app. The Add-to-Home-Screen install prompt has been disabled for students; the manifest/service worker remain only to keep the dev preview and tests working.
+- [`AGENTS.md`](AGENTS.md) — strict rules for future coding agents.
+- [`docs/native-rebuild-product-spec.md`](docs/native-rebuild-product-spec.md) — canonical product behavior.
+- [`docs/native-api-contract.md`](docs/native-api-contract.md) — current backend contracts and gaps.
+- [`docs/native-screen-state-inventory.md`](docs/native-screen-state-inventory.md) — SwiftUI screen/state blueprint.
+- [`docs/native-v1-scope.md`](docs/native-v1-scope.md) — definitive native v1 scope.
+- [`docs/native-location-services-spec.md`](docs/native-location-services-spec.md) — Core Location rules.
+- [`docs/native-push-notification-spec.md`](docs/native-push-notification-spec.md) — APNs plan and missing contract.
+- [`docs/swift-feasibility-spike-plan.md`](docs/swift-feasibility-spike-plan.md) — required proof before the full rebuild.
+- [`docs/native-swift-rebuild-risk-map.md`](docs/native-swift-rebuild-risk-map.md) — P0/P1/P2 risks.
+- [`docs/native-rebuild-readiness-audit.md`](docs/native-rebuild-readiness-audit.md) — readiness decision and evidence.
 
----
+Documents under `docs/archive/` are historical and non-canonical.
 
-## Brand
+## Current Product
 
-| Token | Value |
-|---|---|
-| Background | `#F5F7FB` |
-| Brand blue | `#2563EB` |
-| Brand glow | `rgba(37,99,235,.18)` |
-| Busy | `#D97706` |
-| Packed | `#DC2626` |
+- **Live** — venue crowd bucket, line estimate, likely fullness, momentum, and freshness/confidence.
+- **Deals** — only active current deals, with explicit Promoted labeling where applicable.
+- **Venue detail** — Live/Deals, conditional current-night Events, current-night reports, hours, directions, check-in, and reporting.
+- **Reports** — structured crowd/wait updates through authenticated signed-device ingestion.
+- **Favorites and recents** — server favorites and locally cached venue ID/timestamp recents hydrated from current backend rows.
+- **Early Access** — join Arizona, save spots, request aggregate launch-deal interest, and use honest low-data states.
+- **Account** — profile, public/anonymous mode, optional avatar, permission guidance, legal/support, sign-out, and self-delete.
 
----
+## Architecture
 
-## Assets
+- Frontend: Vite JavaScript reference implementation in `src/`.
+- Backend: Supabase Auth, Postgres/RLS, Realtime, and Edge Functions in `supabase/`.
+- Maps: Mapbox GL JS for the web reference; native map framework is a Swift spike decision.
+- Source of truth: Supabase for account, profile, favorites, venue/status, deals, reports, roles, rewards, presence, analytics, and owner/staff data.
+- Client cache: `src/state/cacheState.js` only. Cache/UI state may never become backend truth.
+- Security: signed-device proof, authenticated Edge Functions, RLS, scoped owner/staff roles, account deletion, rate limits, and static/live smoke tests.
 
-| File | Role |
-|---|---|
-| `assets/LineUp_Header_Wordmark_2x.png` | Transparent wordmark — app header and splash |
-| `assets/LineUp_Splash_Wordmark_2x.png` | 3D splash wordmark — loading screen only |
-| `icons/icon-192.png` | Canonical app icon |
-| `icons/icon-512.png` | App icon — PWA manifest |
-| `icons/maskable-512.png` | Safe-zone maskable icon for Android |
-| `icons/apple-touch-icon.png` | iOS home screen icon |
-| `brand-assets/gentle-bens-logo.png` | Venue logo |
-| `brand-assets/frog-firkin-logo.png` | Venue logo |
+The bundled `src/data.js` rows are web fallback/reference data, not authoritative live status. On a failed initial Supabase load, student UI must show unavailable/low-data behavior rather than seed activity as current truth.
 
----
+## Key Backend Surfaces
 
-## Run Locally
+| Surface | Current contract |
+| --- | --- |
+| Auth/session | Supabase Auth email/password |
+| Device proof | `device-session` |
+| Profile/favorites/deletion/roles | `account-sync` |
+| Early Access/deal interest | `early-access` |
+| Live venues | `active_venue_status` view |
+| Active deals | `venue_deals` under RLS |
+| Report/check-in/presence | `location-ingest` |
+| Current-night reports | `reports-feed` |
+| Product/deal analytics | `app-event-ingest`, `venue-analytics-ingest` |
+| Staff live updates | `venue-status-ingest` |
+| Owner operations | `owner-actions`, `owner-dashboard` |
+
+See `docs/native-api-contract.md` before writing a client.
+
+## Current Native Readiness
+
+Ready for a controlled Swift feasibility spike:
+
+- Supabase Auth/session foundation;
+- signed-device issuance/verification;
+- account/profile/favorites/deletion;
+- Live, Deals, reports, current-night events;
+- owner/staff server authorization kept outside student v1.
+
+P0 decisions before the full native rebuild:
+
+1. configure native auth callbacks/email confirmation;
+2. add APNs token sync before enabling push delivery;
+3. replace profile data-URL avatars with reviewed object storage or defer photos;
+4. approve exact-location sampling and retention/cleanup;
+5. validate Keychain device-session lifecycle and deployed contract parity.
+
+## Run The Web Reference
 
 ```bash
 npm install
 npm run dev
 ```
 
-Then open:
-
-```
-http://127.0.0.1:4179/
-```
-
-The app must run through Vite for development because the browser bundle imports
-Supabase, Mapbox, and other dependencies from `node_modules`.
-
----
-
-## Hosting
-
-The app is hosted on GitHub Pages with a custom domain via `CNAME`.
-Production deploys must publish the Vite build output from `dist/`, not the repo
-root. The GitHub Actions workflow in `.github/workflows/deploy-pages.yml` runs
-`npm ci`, `npm run build`, and uploads `dist/` as the Pages artifact.
-
-**Deploy:**
-1. Push to `main` on GitHub
-2. GitHub Actions builds and deploys `dist/`
-3. GitHub Pages should be configured to use **GitHub Actions** as the source
-4. Custom domain is preserved by `public/CNAME` → `get-lineup.app`
-
----
-
-## BestTime Setup
-
-BestTime uses a private key for creating venue forecasts and a public key for reading/querying existing venue data. Never commit the private key.
-
-1. Create a local env file from the example:
+Vite prints the local URL. Production web builds use:
 
 ```bash
-cp .env.example .env.local
+npm run build
 ```
 
-2. Paste your BestTime keys into `.env.local`.
+GitHub Pages deploys `dist/` through `.github/workflows/deploy-pages.yml`. The manifest, service worker, and offline page remain only for the web preview and regression coverage; Swift must not copy them.
 
-3. Load the env file and seed the active LineUp venues:
+## Verification
 
 ```bash
-set -a
-source .env.local
-set +a
-node scripts/besttime-seed.mjs
+npm run smoke:source
+npm run smoke:reliability
+npm run smoke:security
+npm run smoke:pwa
+npm run build
+npm run smoke:app
+npm test
+git diff --check
 ```
 
-This creates `data/besttime-venues.json`, which is intentionally ignored by Git. The file maps each active LineUp venue to the BestTime venue id returned by the API.
+Run `npm run smoke:security:live` only with a temporary `SUPABASE_SERVICE_ROLE_KEY` environment variable. Never commit or print private keys.
 
-Security note: if a private key is ever shown in a screenshot, chat, or public page, rotate it in BestTime before launch.
+## Safety
 
----
-
-## Supabase Backend
-
-Supabase project:
-
-```text
-https://bxngqqsxthybjikmwvqj.supabase.co
-```
-
-Current backend tables:
-
-| Table | Purpose |
-|---|---|
-| `venues` | Source-of-truth venue metadata, addresses, coordinates, areas, hours, and links |
-| `live_status` | Current crowd, line wait, confidence, momentum, cover, event, freshness, and sources |
-| `reports` | User-submitted crowd and line reports |
-| `confidence_sources` | Source weights for confidence scoring, including venue updates, scouts, reports, photos, BestTime, geofence activity, app interest, events, and historical baseline |
-| `venue_confidence_signals` | Individual confidence inputs observed for a venue, with reliability, freshness decay, source type, and optional metadata |
-| `reporter_reliability` | Device/user trust scores for future agreement-based weighting |
-| `venue_hourly_priors` | Per-venue, per-day, per-hour baseline curves used when live reports are sparse |
-| `app_signal_events` | First-party intent telemetry such as detail views, directions taps, favorites, LineLeap taps, and report opens |
-| `ground_truth_observations` | Manual calibration observations from launch-night headcounts, lines, photos, and notes |
-| `venue_admins` | Future Supabase Auth permissions for owners and venue staff |
-| `reward_events` | Server-backed rewards ledger (points earned per device/user) |
-| `reward_redemptions` | Redeemed rewards (e.g. line-skip) with status and redemption code |
-| `venue_checkins` | Verified/unverified proximity check-ins used as confidence signals |
-| `venue_staff_codes` | Per-venue numeric staff access codes (expiring) for the staff console |
-| `owner_audit_logs` | Audit trail of owner/staff actions and auth failures |
-| `presence_snapshots` | Rounded location presence pings for live activity and verification |
-| `user_profiles` | Profile rows for authenticated (including anonymous) users |
-| `user_devices` | Device-to-user mapping for claiming anonymous device data |
-| `user_favorites` | Server-side favorites synced across a user's devices |
-
-> Reconciliation note (2026-05-28): the rows from `reward_redemptions` down were added by matching table names referenced in the Edge Functions and client code. The four model/config tables above (`confidence_sources`, `reporter_reliability`, `venue_hourly_priors`, `ground_truth_observations`) are documented but not referenced by app/function code — confirm exact columns and which tables exist against the live schema.
-
-The app now reads from the `active_venue_status` view when Supabase is available and falls back to bundled venue data if it is offline. User reports update the UI immediately and also insert into Supabase in the background.
-
-Confidence is no longer just a static label. The backend computes a signal score from source quality, reliability, and freshness. High-trust inputs such as owner/venue updates and verified scouts carry more weight, while historical baseline and app interest help fill gaps without pretending to be live proof. User reports automatically create confidence signals, and every signal fades over time so stale reads lose influence as the night changes.
-
-Data-source strategy:
-
-- Treat crowdsourced reports, venue/admin updates, verified scouts, and verified photos as the primary year-one live truth layer.
-- Treat BestTime Basic as a forecast/prior provider, not as ground truth. Do not pay for live BestTime until Tucson venue coverage is manually validated.
-- Do not scrape Google Popular Times, Snap Map, Instagram locations, or other private/social APIs. They create ToS and investor-diligence risk.
-- Use first-party app behavior as a small supporting signal only: detail views, directions taps, map pin taps, favorites, LineLeap taps, report opens, and Pulse recommendations.
-- Use `venue_hourly_priors` for Bayesian shrinkage when reports are sparse.
-- Use `ground_truth_observations` to calibrate the model during launch nights.
-
-Initial model targets:
-
-- Line reports decay fastest, roughly 30 minutes.
-- Crowd reports decay slower, roughly 45-90 minutes.
-- Venue/admin and trusted scout signals decay slower than ordinary reports.
-- Baseline priors use a pseudo-count around `3` so sparse venues do not swing wildly from one report.
-- Public client reports cannot mark themselves GPS verified. Verified proximity should be added later through a Supabase Edge Function or native app backend check.
-
-Scoring engine:
-
-- `preview_venue_live_score(venue_id, as_of)` computes a live crowd score, wait estimate, confidence score, momentum, and source labels without mutating state.
-- `recompute_venue_live_status(venue_id, as_of)` writes the computed result into `live_status`.
-- `recompute_all_live_status(as_of)` refreshes every active venue.
-- `get_device_profile_summary(target_device_id)` returns a privacy-safe device profile summary used by the profile screen (called by the `device-profile-summary` function).
-- New confidence signals and app intent events trigger recomputation for their venue.
-- Confidence is intentionally stricter than crowd scoring: baseline priors can move the displayed estimate, but they do not count as fresh live inputs.
-
-Real source ingestion:
-
-- `venue-status-ingest` is a Supabase Edge Function that lets approved staff accounts, venue-specific staff codes, or owner emergency access submit venue updates into `venue_confidence_signals`.
-- `validate-staff-code` is the clean staff-password check used before opening the venue console. It validates the server-side owner/staff secrets or a row in `venue_staff_codes` without creating a venue confidence signal.
-- `owner-actions` is the protected owner command surface for live venue overrides, venue status changes, staff-code creation, redemption review, and per-venue owner detail views. It accepts either the server-side emergency code or a Supabase Auth user with `role='owner'` in `venue_admins`.
-- `device-session` issues a signed server token for the current device/session. Report, check-in, rewards, and account-claim functions require this token before trusting a `device_id`.
-- `besttime-prior-import` is a Supabase Edge Function scaffold for importing BestTime forecast curves into `venue_hourly_priors`. It requires a `BESTTIME_PUBLIC_KEY` Supabase secret and mapped `besttime_venue_id` values in `besttime_venue_map`. (Note: this function's source is not yet present in this repo — it is planned/external. Add it under `supabase/functions/besttime-prior-import/` before relying on it.)
-- BestTime should stay a forecast/prior source until Tucson live coverage is validated against manual ground truth.
-- The app now syncs in-app staff updates to Supabase, where they are treated as high-trust venue/admin signals and recompute the live score.
-
-Deployable local function source lives in:
-
-| Function | Path |
-|---|---|
-| `validate-staff-code` | `supabase/functions/validate-staff-code/index.ts` |
-| `device-session` | `supabase/functions/device-session/index.ts` |
-| `owner-actions` | `supabase/functions/owner-actions/index.ts` |
-| `owner-dashboard` | `supabase/functions/owner-dashboard/index.ts` |
-| `venue-status-ingest` | `supabase/functions/venue-status-ingest/index.ts` |
-| `account-sync` | `supabase/functions/account-sync/index.ts` |
-| `location-ingest` | `supabase/functions/location-ingest/index.ts` |
-| `app-event-ingest` | `supabase/functions/app-event-ingest/index.ts` |
-| `reward-ledger` | `supabase/functions/reward-ledger/index.ts` |
-| `device-profile-summary` | `supabase/functions/device-profile-summary/index.ts` |
-| Shared CORS helpers | `supabase/functions/_shared/cors.ts` |
-| Shared security/rate-limit helpers | `supabase/functions/_shared/security.ts` |
-
-When the Supabase CLI or MCP is available:
-
-```bash
-supabase functions deploy validate-staff-code --project-ref bxngqqsxthybjikmwvqj
-supabase functions deploy device-session --project-ref bxngqqsxthybjikmwvqj
-supabase functions deploy owner-actions --project-ref bxngqqsxthybjikmwvqj
-supabase functions deploy owner-dashboard --project-ref bxngqqsxthybjikmwvqj
-supabase functions deploy venue-status-ingest --project-ref bxngqqsxthybjikmwvqj
-supabase functions deploy account-sync --project-ref bxngqqsxthybjikmwvqj
-supabase functions deploy location-ingest --project-ref bxngqqsxthybjikmwvqj
-supabase functions deploy app-event-ingest --project-ref bxngqqsxthybjikmwvqj
-supabase functions deploy reward-ledger --project-ref bxngqqsxthybjikmwvqj
-supabase functions deploy device-profile-summary --project-ref bxngqqsxthybjikmwvqj
-supabase secrets set LINEUP_OWNER_CODE=<rotating-owner-code> LINEUP_STAFF_CODE_PEPPER=<random-staff-code-pepper> LINEUP_DEVICE_TOKEN_SECRET=<random-device-token-secret> --project-ref bxngqqsxthybjikmwvqj
-```
-
-Deployment status:
-
-- `device-session` source present in repo; deploy before enforcing signed device trust in production.
-- `validate-staff-code` deployed to Supabase on May 27, 2026.
-- `owner-actions` deployed to Supabase on May 27, 2026.
-- `owner-dashboard` source present in repo; confirm whether it is deployed.
-- `venue-status-ingest` deployed to Supabase on May 27, 2026.
-- `account-sync` deployed to Supabase on May 27, 2026.
-- `location-ingest` deployed to Supabase on May 27, 2026.
-- `app-event-ingest` deployed to Supabase on May 27, 2026.
-- `reward-ledger` deployed to Supabase on May 27, 2026.
-- `device-profile-summary` deployed to Supabase on May 27, 2026.
-- `LINEUP_OWNER_CODE` and `LINEUP_STAFF_CODE_PEPPER` are set as Supabase function secrets.
-
-Security status:
-
-- RLS is enabled on all public tables.
-- Venue/live status is publicly readable.
-- Public users can submit reports.
-- Staff/owner updates require future authenticated Supabase users.
-- Venue admin access is now venue-specific: staff accounts come from `venue_admins`, and fallback staff codes are stored as per-venue hashes with expirations.
-- Owner dashboard/detail responses are data-minimized: no raw user IDs, device IDs, exact GPS trails, broad row metadata, or full stored staff codes are returned to the browser.
-
----
-
-## Runtime Files
-
-| File | Purpose |
-|---|---|
-| `index.html` | Entire app — single-file PWA |
-| `manifest.webmanifest` | PWA manifest (standalone display, icons, theme) |
-| `sw.js` | Service worker — app shell cache + offline fallback |
-| `offline.html` | Shown when offline and no cache hit |
-| `icons/` | All PWA and favicon icon sizes |
-| `assets/` | Wordmark images |
-| `brand-assets/` | Venue logos |
-| `scripts/besttime-seed.mjs` | Local-only helper to create BestTime venue forecasts |
-| `data/besttime-venues.example.json` | Safe example shape for generated BestTime venue data |
-
----
-
-## localStorage Keys
-
-| Key | Purpose |
-|---|---|
-| `lineup_favorites` | Array of favorited venue IDs |
-| `lineup_area` | Last selected area (`main_gate` or `fourth_downtown`) |
-| `lineup_pwa_installed` | Set to `"true"` when app is opened in standalone mode |
+- Do not weaken RLS, signed-device proof, account deletion, current-night filtering, or scoped roles.
+- Do not introduce fake activity, local venue overrides, public free-form UGC, payment/IAP flows, or paid influence over crowd truth.
+- Do not place service-role/provider private keys, passwords, owner codes, or APNs credentials in the client or repository.
+- Review `docs/production-safety.md` before migrations or function deployments.

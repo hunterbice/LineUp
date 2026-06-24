@@ -42,7 +42,7 @@
 
 ## Submission operations
 
-- [ ] Build uploaded through Priority 17 wrapper/TestFlight process
+- [ ] Fully native SwiftUI build uploaded through the future TestFlight submission process
 - [ ] Version/build numbers match release notes
 - [ ] Export compliance answered
 - [ ] TestFlight internal test completed
