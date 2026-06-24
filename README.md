@@ -1,6 +1,6 @@
 # LineUp
 
-**Know the move before you move.**
+**Know Before You Go.**
 
 LineUp is a mobile-first Progressive Web App for University of Arizona nightlife. It shows live crowd status, estimated line wait, closing times, momentum trends, venue events, and LineLeap jump links — all in a dark, branded interface built for iPhone Safari.
 
@@ -18,8 +18,8 @@ Live at: [get-lineup.app](https://get-lineup.app)
 - **Night Intel** — timing guidance, signal strength, and best move summary
 - **Favorites** — pin bars to the top of the live list
 - **Swipe navigation** — swipe left/right to move between venues inside a detail sheet; swipe down to close
-- **Add to Home Screen prompt** — branded install sheet shown automatically on first mobile visit (iOS Safari instructions + Android/Chrome native prompt)
-- **PWA** — installable, offline-capable, standalone display, service worker caching
+- **Offline shell** — service worker app-shell caching keeps the web preview usable offline
+> Note: LineUp is no longer positioned as a PWA / Add-to-Home-Screen product. The current web app is the product/UX reference for a future native SwiftUI iOS app. The Add-to-Home-Screen install prompt has been disabled for students; the manifest/service worker remain only to keep the dev preview and tests working.
 
 ---
 

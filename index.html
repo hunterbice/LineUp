@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#F5F7FB">
 <meta name="color-scheme" content="light">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://bxngqqsxthybjikmwvqj.supabase.co wss://bxngqqsxthybjikmwvqj.supabase.co https://api.mapbox.com https://events.mapbox.com https://*.tiles.mapbox.com https://*.mapbox.com; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests">
-<meta name="description" content="LineUp helps University of Arizona students know the move before they move.">
+<meta name="description" content="LineUp helps University of Arizona students know before they go out.">
 <meta name="format-detection" content="telephone=no,address=no,email=no">
 <meta name="application-name" content="LineUp">
 <meta name="mobile-web-app-capable" content="yes">
@@ -16,12 +16,12 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="LineUp">
 <meta property="og:title" content="LineUp">
-<meta property="og:description" content="Know the move before you move.">
+<meta property="og:description" content="Know Before You Go.">
 <meta property="og:url" content="https://get-lineup.app/">
 <meta property="og:image" content="https://get-lineup.app/icons/icon-512.png">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="LineUp">
-<meta name="twitter:description" content="Know the move before you move.">
+<meta name="twitter:description" content="Know Before You Go.">
 <meta name="twitter:image" content="https://get-lineup.app/icons/icon-512.png">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="canonical" href="https://get-lineup.app/">
@@ -37,7 +37,7 @@
     <div class="splash-logo-wrap">
       <span class="lineup-wordmark splash-wordmark">LineUp</span>
     </div>
-    <div class="splash-tagline">Know the move before you move.</div>
+    <div class="splash-tagline">Know Before You Go</div>
   </div>
 </div>
 <div id="app">
@@ -45,7 +45,7 @@
     <div class="app-header">
       <div class="brand-block">
         <span class="lineup-wordmark">LineUp</span>
-        <div class="app-subtitle"><span>Know the move before you move.</span></div>
+        <div class="app-subtitle"><span>Know Before You Go</span></div>
       </div>
       <button class="notify" id="liveAlertButton" aria-label="Live alerts" onclick="showToast('Live alerts are on')"><svg class="heartbeat live-motion" viewBox="0 0 32 24" aria-hidden="true"><path class="trace" d="M2 13h6l3-8 5 16 4-10 3 2h7"/></svg></button>
     </div>
@@ -66,39 +66,8 @@
 <section id="detail" class="detail"></section>
 <div id="reportSheet" class="sheet"><div class="sheetcard" id="sheetcard"></div></div>
 <div id="toast" style="position:fixed;left:50%;bottom:calc(92px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(20px);background:#0B1220;color:#FFFFFF;border:1px solid rgba(15,23,42,.12);box-shadow:0 12px 30px rgba(15,23,42,.18);padding:11px 18px;border-radius:999px;font-size:13px;font-weight:850;opacity:0;transition:.25s;z-index:220;pointer-events:none"></div>
-<section id="installPrompt" class="install-backdrop" role="dialog" aria-modal="true" aria-labelledby="install-heading">
-  <div class="install-card">
-    <div class="install-top">
-      <div class="install-mini-brand">
-        <img src="/icons/icon-192.png" alt="" aria-hidden="true" class="install-app-icon">
-        <div class="install-mini-copy">
-          <span class="lineup-wordmark install-mini-wordmark">LineUp</span>
-          <div class="install-mini-subtitle">Home Screen App</div>
-        </div>
-      </div>
-      <div class="install-pill"><span class="live-dot"></span> APP INSTALL</div>
-    </div>
-    <h1 class="install-title" id="install-heading">
-      <span>Add</span><span class="lineup-wordmark install-title-wordmark">LineUp</span><span>to your Home Screen</span>
-    </h1>
-    <p class="install-copy">Get to live bar status faster. Check crowds, line waits, closing times, and where the move is without digging for the link.</p>
-    <div class="install-benefits">
-      <div class="install-benefit"><span class="benefit-badge"><span class="benefit-icon speed"></span></span>One-tap access before you go out</div>
-      <div class="install-benefit"><span class="benefit-badge"><span class="benefit-icon app"></span></span>Looks and feels like a real app</div>
-      <div class="install-benefit"><span class="benefit-badge"><span class="benefit-icon live"></span></span>Quickly check what's busy tonight</div>
-    </div>
-    <div id="installSteps" class="install-steps">
-      <div class="install-step"><span class="step-num">1</span><div class="step-text">Tap the <span>Share</span> button in Safari</div></div>
-      <div class="install-step"><span class="step-num">2</span><div class="step-text">Choose <span>Add to Home Screen</span></div></div>
-      <div class="install-step"><span class="step-num">3</span><div class="step-text">Tap <span>Add</span> and open LineUp like an app</div></div>
-    </div>
-    <div class="install-actions">
-      <button class="install-primary" id="installPrimary" onclick="handleInstallPrimary()">Continue to LineUp</button>
-      <button class="install-secondary" onclick="handleInstallSecondary()">Remind me later</button>
-    </div>
-    <div class="install-footer">No App Store download needed.</div>
-  </div>
-</section>
+<!-- Add-to-Home-Screen / PWA install prompt removed: LineUp is the product reference for a native Swift rebuild, not a PWA install funnel. Hidden stub retained only so existing #installPrompt references stay null-safe. -->
+<section id="installPrompt" class="install-backdrop" hidden aria-hidden="true"></section>
 <script type="module" src="./src/main.js"></script>
 </body>
 </html>

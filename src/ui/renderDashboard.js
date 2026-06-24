@@ -6,7 +6,7 @@ export function renderBarCard(bar, helpers) {
   const fav = helpers.isFavorite(bar.id);
   const signal = helpers.signalState(bar);
   const confirmed = bar.backend ? "Live source" : "Typical read";
-  const action = bar.wait > 20 ? "Check before you go" : bar.lvl === "packed" ? "Expect a crowd" : bar.lvl === "busy" ? "Good energy now" : "Easy move";
+  const action = bar.wait > 20 ? "Longer line" : bar.lvl === "packed" ? "Packed" : bar.lvl === "busy" ? "Busy" : "Calm";
   const dealBadge = helpers.renderDealBadge ? helpers.renderDealBadge(helpers.deal || null) : "";
   return '<article class="barcard" data-id="' + bar.id + '"><div class="cardtop">' +
     helpers.logo(bar) +

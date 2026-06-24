@@ -83,7 +83,12 @@ export function createInstallPromptController() {
   }
 
   function maybeShowAfterSplash() {
-    if (shouldShowInstallPrompt()) showInstallPrompt();
+    // Add-to-Home-Screen / PWA install prompt intentionally disabled for students.
+    // LineUp is the product/UX reference for a future native Swift app, not a PWA
+    // install funnel. The native app will not ship an "Add to Home Screen" prompt.
+    // shouldShowInstallPrompt/showInstallPrompt are retained but unused so manifest,
+    // service worker, and dev-preview behavior stay intact.
+    return;
   }
 
   return { handleInstallPrimary, handleInstallSecondary, registerInstallEvents, maybeShowAfterSplash };

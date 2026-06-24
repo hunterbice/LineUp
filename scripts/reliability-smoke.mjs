@@ -89,7 +89,7 @@ assert.doesNotMatch(shellRenderer + profileRenderer + dealsPageRenderer, /coming
 assert.match(shellRenderer, /Join Early Access[\s\S]*University of Arizona/, "account/setup flow should expose functional Arizona Early Access and manual campus selection");
 assert.doesNotMatch(shellRenderer + profileRenderer, /Sign in with Apple|Apple sign-in/i, "nonfunctional Apple Sign-In must not appear");
 assert.match(profileRenderer, /openDeleteAccountConfirmation[\s\S]*Delete My Account/, "profile must expose in-app account deletion");
-assert.match(profileRenderer, /Privacy Policy[\s\S]*Terms of Use[\s\S]*Help \/ Support[\s\S]*Account & Access/, "profile must expose review-critical account and legal surfaces");
+assert.match(profileRenderer, /Privacy Policy[\s\S]*Terms of Use[\s\S]*Help \/ Support[\s\S]*menu\("Account"/, "profile must expose review-critical account and legal surfaces");
 assert.match(legalPages, /support@get-lineup\.app/, "public legal/support pages must expose an actionable support contact");
 assert.doesNotMatch(reportSheetRenderer, /textarea|noteField|Optional note/i, "iOS v1 report sheet must remain structured-only");
 assert.doesNotMatch(reportsFeed, /note:\s*cleanText/, "public reports feed must not expose free-form report notes");

@@ -204,10 +204,14 @@ async function main() {
     await page.locator(".sectionlabel", { hasText: "Recently checked" }).waitFor();
     await page.locator(".barcard").first().click();
     await page.waitForSelector("#detail.open");
-    await page.locator(".tabs2 button", { hasText: "Intel" }).click();
-    await page.waitForSelector(".tabs2 button.on", { hasText: "Intel" });
-    await page.locator(".tabs2 button", { hasText: "Events" }).click();
-    await page.waitForSelector(".tabs2 button.on", { hasText: "Events" });
+    await page.locator(".tabs2 button", { hasText: "Deals" }).click();
+    await page.waitForSelector(".tabs2 button.on", { hasText: "Deals" });
+    // Events tab only renders when the venue has an event tonight (item 11).
+    const detailEventsTab = page.locator(".tabs2 button", { hasText: "Events" });
+    if (await detailEventsTab.count()) {
+      await detailEventsTab.click();
+      await page.waitForSelector(".tabs2 button.on", { hasText: "Events" });
+    }
     await page.locator(".cta", { hasText: "Report" }).click();
     await page.waitForSelector("#reportSheet.open");
     const busyReportButton = page.locator("#reportSheet .choicegrid").first().locator("button", { hasText: "BUSY" });
@@ -243,10 +247,14 @@ async function main() {
     await page.locator(".profileMenuItem", { hasText: "Privacy Policy" }).waitFor();
     await page.locator(".profileMenuItem", { hasText: "Terms of Use" }).waitFor();
     await page.locator(".profileMenuItem", { hasText: "Help / Support" }).waitFor();
-    await page.locator(".profileMark").click({ clickCount: 5 });
-    const hiddenSheetOpened = await page.locator("#reportSheet.open").count();
-    if (hiddenSheetOpened) throw new Error("Profile avatar should not open hidden owner access");
-    await page.locator(".profileMenuItem", { hasText: "Account & Access" }).click();
+    // Anonymous users no longer get a large "A" avatar (items 6/19), so .profileMark
+    // only exists when a public photo is set. Guard the hidden-owner-access check.
+    const profileMark = page.locator(".profileMark");
+    if (await profileMark.count()) {
+      await profileMark.click({ clickCount: 5 });
+      if (await page.locator("#reportSheet.open").count()) throw new Error("Profile avatar should not open hidden owner access");
+    }
+    await page.locator(".profileMenuItem", { hasText: "Account" }).click();
     await page.locator(".dangerBtn", { hasText: "Delete My Account" }).click();
     await page.locator("#reportSheet.open", { hasText: "Delete your LineUp account?" }).waitFor();
     await page.locator("#reportSheet button", { hasText: "Cancel" }).click();
