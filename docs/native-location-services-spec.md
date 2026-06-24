@@ -79,19 +79,33 @@ Current server logic:
 - Do not use location for paid placement or crowd manipulation.
 - Remove image EXIF location metadata before avatar upload where applicable.
 
-## Retention And Backend Gap
+## Retention Contract And Backend Gap
 
-`presence_snapshots` currently stores rounded and exact coordinates (`lat_rounded`, `lng_rounded`, `lat_exact`, `lng_exact`). Account deletion clears user/device-linked presence, but the repository does not define a routine retention/expiry job for ordinary presence rows.
+`presence_snapshots` currently stores rounded and exact coordinates (`lat_rounded`, `lng_rounded`, `lat_exact`, `lng_exact`). `location-ingest` writes those values only for a real foreground coordinate. Owner access is role-gated, and `owner-dashboard` limits exact-coordinate reads to active 15/60-minute operational windows. Account deletion clears user/device-linked presence. The repository does not define a routine retention/expiry job for ordinary presence rows.
+
+Priority 18 establishes this target policy for implementation and legal review:
+
+| Data | Maximum target retention | Required disposition |
+| --- | --- | --- |
+| `lat_exact`, `lng_exact` | 24 hours | Set to null or delete the row after any required aggregate is derived |
+| `lat_rounded`, `lng_rounded`, accuracy, nearest venue, source | 30 days | Delete after operational abuse/quality window unless converted to de-identified aggregate |
+| De-identified venue/hour aggregates | Product-model retention after privacy review | Must contain no user ID, device ID, session ID, or reconstructable path |
+| Disposable Swift spike coordinates | Until spike account cleanup, never beyond the above limits | Delete the disposable account and verify linked presence removal |
+
+These are maximums, not promises to retain data for the full period. The production privacy policy/App Store inventory must describe the deployed behavior, not this target.
 
 Before the full Swift rebuild:
 
-1. approve a retention period for exact, rounded, and derived presence data;
-2. add reviewed automated deletion/aggregation;
-3. document owner access and incident handling;
-4. decide whether exact coordinates are required after server distance verification;
-5. update Privacy Label and policy copy to match actual retention.
+1. approve the target periods above with product/legal/security;
+2. add a reviewed scheduled cleanup that is idempotent and fails visibly;
+3. add verification queries/tests proving old exact values are redacted and old operational rows are removed;
+4. document owner access and incident handling;
+5. decide whether exact coordinates can be discarded immediately after server distance verification;
+6. update Privacy Label and policy copy to match deployed retention.
 
-This is **P0 for full native launch**, though the existing endpoint is sufficient for a controlled feasibility spike using disposable test data.
+The cleanup should be a database-scheduled function or controlled scheduled Edge Function using existing deployment practices. Do not rely on a client timer. Do not ship an unscheduled SQL function and describe retention as enforced.
+
+This is **P0 for full native launch**, though the existing endpoint is sufficient for a controlled feasibility spike using disposable test data, foreground-only samples, and verified account deletion.
 
 ## Sampling Guidance
 
@@ -115,7 +129,7 @@ Ready now:
 
 Needs work:
 
-- retention/aggregation policy;
+- implementation/deployment of the 24-hour exact and 30-day rounded cleanup contract;
 - native sampling contract and telemetry budget;
 - deployed-contract parity verification during spike;
 - App Store privacy answers after final implementation.

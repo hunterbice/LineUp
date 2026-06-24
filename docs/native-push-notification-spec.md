@@ -23,9 +23,9 @@ Suggested purpose copy:
 
 Support notDetermined, denied, authorized, provisional, and ephemeral where available. Preferences should link to system Settings when denied. Local education progress may prevent repetitive education but must not become permission truth.
 
-## APNs Token Contract — Missing P0
+## APNs Token Contract — Missing P0 For Delivery
 
-Create a reviewed authenticated, signed-device Edge Function before enabling push.
+No implementation exists. The names and shapes in this section are a review contract, not callable backend. Create a reviewed authenticated, signed-device Edge Function before enabling push.
 
 Suggested actions:
 
@@ -49,6 +49,39 @@ Required server behavior:
 - Venue staff cannot read tokens or individual subscriptions.
 - Rate limits and audit-safe errors apply.
 - Service-role credentials and APNs signing keys remain server-only.
+- Account deletion must remove token rows before deleting the auth user; ordinary logout must revoke the account/installation association even if the client cannot reach the server later.
+- RLS/grants must deny student/venue reads and direct client mutation. Only the reviewed server function may write token rows.
+- Raw APNs tokens must not be returned by owner dashboards, analytics, exports, or logs.
+
+### Required backend shape before implementation
+
+Use a private/server-only token record, not a browser-readable public table. The reviewed migration must provide at least:
+
+- `id` UUID primary key;
+- `user_id` referencing `auth.users` with account-deletion cleanup;
+- LineUp `device_id` and a server-validated installation binding;
+- `platform = 'ios'`;
+- `environment = 'sandbox' | 'production'`;
+- exact `bundle_id`;
+- server-private APNs token material needed for delivery;
+- deterministic `token_hash` for uniqueness/dedupe and optional `token_last4` for redacted support;
+- `enabled` and allowlisted notification categories;
+- `last_seen_at`, `revoked_at`, `created_at`, and `updated_at`.
+
+A hash alone cannot send a notification. The raw token must therefore live only in a private/server-access path with provider encryption at rest and least-privilege access. The architecture review must choose that storage mechanism before the migration is written.
+
+The future `push-token-sync` function must:
+
+- validate the Supabase JWT and current signed-device proof;
+- derive `user_id` from JWT and reject a caller-supplied user ID;
+- bind environment and bundle ID to a server allowlist;
+- validate token format/length and never log it;
+- upsert/rotate by token hash plus installation;
+- revoke this binding on `unregister` without affecting another user's token;
+- rate-limit and audit only redacted metadata;
+- expose no token read action to students, venues, owner dashboards, or analytics.
+
+This is an exact implementation contract, not evidence that `user_push_tokens` or `push-token-sync` exists.
 
 ## Token Lifecycle
 
@@ -100,7 +133,16 @@ Deferred:
 - **P1:** category preferences, saved-venue targeting, frequency/dedupe rules, delivery observability, test sandbox.
 - **P2:** advanced segmentation, proximity campaigns, richer analytics, promotional products.
 
-Swift v1 may ship permission education without requesting authorization only if the UI clearly says push is unavailable, but the preferred plan is to complete P0 before enabling the button.
+### Swift feasibility spike
+
+- Native notification education and real authorization status may be tested.
+- APNs sandbox token acquisition may be tested and recorded only in redacted evidence.
+- The token must not be sent to a nonexistent LineUp endpoint or inserted directly into Supabase.
+- This limitation does **not** block the controlled spike.
+
+### Full Swift rebuild
+
+Push delivery remains blocked until schema, Edge Function, RLS/grants, logout/deletion cleanup, environment validation, APNs provider integration, and live negative tests are implemented and deployed. Swift v1 may omit push entirely; if omitted, the UI and App Store metadata must not promise delivery.
 
 ## App Store And Privacy Guidance
 

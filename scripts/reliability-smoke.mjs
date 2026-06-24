@@ -58,6 +58,7 @@ const nativeDocNames = [
   "native-push-notification-spec.md",
   "native-v1-scope.md",
   "swift-feasibility-spike-plan.md",
+  "swift-feasibility-spike-preflight.md",
   "native-swift-rebuild-risk-map.md",
   "native-rebuild-readiness-audit.md",
 ];
@@ -122,6 +123,12 @@ assert.doesNotMatch(agentRules + readme + nativeDocs, /LineUp is (?:frontend-onl
 assert.match(nativeDocs, /APNs token (?:sync|registration)[\s\S]*(?:missing|P0)/i, "native guidance should make the missing APNs backend contract explicit");
 assert.match(nativeDocs, /Core Location[\s\S]*foreground/i, "native guidance should specify foreground Core Location");
 assert.match(nativeDocs, /5(?:\s*:\s*00)? AM America\/Phoenix/i, "native guidance should preserve the current-night boundary");
+assert.match(nativeDocs, /<bundle-id>:\/\/auth\/callback/, "Swift preflight should define the native auth callback without inventing a production bundle ID");
+assert.match(nativeDocs, /24 hours[\s\S]*30 days/, "native location guidance should define exact and rounded retention targets");
+assert.match(nativeDocs, /APNs sandbox token acquisition[\s\S]*must not be sent to a nonexistent LineUp endpoint/i, "Swift preflight must not fake APNs backend readiness");
+assert.match(nativeDocs, /compressed data-URL path[\s\S]*(?:transitional|compatibility)/i, "native guidance must label the current avatar storage path as transitional");
+assert.match(nativeDocs, /Keychain[\s\S]*ordinary logout[\s\S]*account deletion/i, "native guidance should define signed-device secret lifecycle");
+assert.match(nativeDocs, /smoke:security:live[\s\S]*(?:temporary service-role key|service-role credential)/i, "native guidance should retain the blocked live-security verification step");
 archivedDocs.forEach((source) => assert.match(source, /Archived historical document\. Not canonical for the native Swift rebuild\./, "every stale handoff should carry a non-canonical archive warning"));
 assert.doesNotMatch(main + shellRenderer + profileRenderer, /Add to Home Screen|Install LineUp|beforeinstallprompt|maybeShowAfterSplash/, "student runtime must not retain install promotion behavior");
 assert.doesNotMatch(main, /function renderStats|NIGHT INTEL|Signal Profile/, "retired Intel and Signal Profile renderers must not remain reachable");

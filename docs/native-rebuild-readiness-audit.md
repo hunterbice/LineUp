@@ -1,7 +1,7 @@
 # Native Swift Rebuild Readiness Audit
 
 Audit date: 2026-06-24  
-Baseline commit: `2a1ed10` (`17B`)  
+Baseline commit: `eff6455` (`Priority 17 blueprint`)
 App version: `v75`
 
 ## Executive Decision
@@ -9,7 +9,20 @@ App version: `v75`
 - **Ready for a controlled Swift feasibility spike:** yes.
 - **Ready to begin the full Swift rebuild:** no.
 
-The product and core backend are mature enough to prove the native integration. The full rebuild should wait for native auth callback configuration, APNs token sync decision/contract, production avatar storage, exact-location retention/sampling policy, and deployment-parity verification.
+The product and core backend are mature enough to prove native integration. Priority 18 converted every P0 into an exact spike contract or a clearly bounded full-rebuild gate. The full rebuild still waits for production auth callback approval, APNs delivery infrastructure if push remains in scope, production avatar storage if photos remain in scope, automated exact-location cleanup, on-device Keychain proof, and credentialed live authorization verification.
+
+## Priority 18 P0 Closure Summary
+
+| P0 | Classification after Priority 18 | Blocks spike | Blocks full rebuild | Exact next action |
+| --- | --- | --- | --- | --- |
+| Native auth callback/session | Spike-ready with documented limitation | No | Yes, until production callback/session proof | Choose disposable bundle ID, allowlist one exact callback, run on-device signup/confirmation/restore/refresh/logout matrix |
+| APNs token sync/lifecycle | Spike-ready for authorization/token acquisition only | No | Yes if push delivery ships | Either omit push or implement reviewed token schema/function/RLS/provider/cleanup and live tests |
+| Profile-photo object storage | Spike-ready for omission or compatibility test | No | Yes if photo ships | Decide read model, implement self-scoped Storage/migration/replacement/deletion cleanup, then cross-user tests |
+| Exact-location retention | Spike-ready with disposable foreground data | No | Yes | Deploy and verify 24-hour exact and 30-day rounded cleanup before release |
+| Signed-device/Keychain lifecycle | Closed by existing server implementation for spike; native proof remains | No | No, subject to successful spike | Implement/test Keychain tuple, renewal, invalid recovery, relaunch, reinstall, logout, deletion; add revocation as P1 |
+| Deployed parity/live security | Migration/function inventory verified; credentialed authorization suite blocked | No for disposable spike | Yes for security signoff | Run `smoke:security:live` with a temporary service-role key and archive redacted pass evidence |
+
+No migration, Edge Function, table, Storage bucket, or production permission behavior was added in Priority 18. Missing systems are intentionally not represented as implemented.
 
 ## Current Repo State
 
@@ -57,12 +70,12 @@ Archived documents are historical only.
 
 ### P0 Before Full Swift Rebuild
 
-1. Native auth redirect/email-confirmation/deep-link configuration is absent from `supabase/config.toml`.
-2. No APNs token table, registration endpoint, sender, or lifecycle exists.
-3. Profile avatars are stored as large data URLs in `user_profiles`; production Swift should use self-scoped object storage and URL cleanup.
-4. Exact foreground coordinates are stored in `presence_snapshots`, but no routine retention/aggregation job is defined.
-5. Deployed migration/function parity must be reverified with live credentials.
-6. Swift Keychain installation/device-token renewal semantics need spike proof.
+1. Production native auth redirect/email-confirmation/deep-link configuration is absent from `supabase/config.toml`; the disposable spike procedure is exact in `swift-feasibility-spike-preflight.md`.
+2. No APNs token table, registration endpoint, sender, or lifecycle exists. Push may be omitted, but must not be promised.
+3. Profile avatars are stored as compressed data URLs in `user_profiles`; production Swift photo launch requires reviewed object storage and lifecycle cleanup.
+4. Exact foreground coordinates are stored in `presence_snapshots`; the 24-hour exact / 30-day rounded policy has no deployed scheduled enforcement.
+5. Credentialed live authorization/IDOR probes remain unverified because `SUPABASE_SERVICE_ROLE_KEY` was unavailable.
+6. Swift Keychain installation/device-token renewal semantics need on-device spike proof; the server contract itself is ready.
 
 ### P1 Improvements
 
@@ -71,6 +84,8 @@ Archived documents are historical only.
 - Measure Realtime reconnect/battery behavior.
 - Add versioned legal-content delivery strategy.
 - Add analytics aggregation/retention before scale.
+- Add per-device signed-token revocation/rotation beyond the current 30-day HMAC expiry.
+- Decide whether profile avatars use authenticated signed reads or approved public object URLs before creating a bucket.
 
 ### P2 Later
 
@@ -89,19 +104,31 @@ Protected reports, app signals, analytics, live status, profiles, favorites, rew
 - Education/product copy: ready conceptually.
 - Native authorization: must be implemented with `UNUserNotificationCenter`.
 - Delivery backend: missing.
-- Decision: push is not ready to promise. Complete `native-push-notification-spec.md` P0 or defer actual permission/request/delivery honestly.
+- Spike: native authorization and sandbox token acquisition may be tested without backend sync.
+- Decision: push is not ready to promise. Complete `native-push-notification-spec.md` P0 or omit actual permission/delivery honestly.
 
 ## Location Readiness
 
 - Optional/manual fallback, server verification, signed ingest, rate limits, and deletion cleanup: ready.
 - Core Location client and reduced-accuracy handling: Swift work.
-- Exact-coordinate retention/sampling: unresolved P0.
+- Target retention: exact coordinates no longer than 24 hours; rounded operational presence no longer than 30 days; only de-identified aggregates may persist longer.
+- Enforcement: unresolved P0 because no scheduled cleanup exists.
 - Background location: explicitly deferred.
 
 ## Profile Photo Readiness
 
 - Product flow, crop/position, compression, unsupported-format handling: proven in web v75.
-- Storage contract: not production-native ready. Base64 preference payload is acceptable only for compatibility spike testing.
+- Storage contract: not production-native ready. Compressed data-URL preference payload is acceptable only for compatibility spike testing; the spike may omit photo entirely.
+- Object-storage read model, self-scoped policies, legacy migration, replacement/orphan cleanup, and account-deletion cleanup remain P0 if photo ships.
+
+## Deployed Backend Parity Evidence
+
+Priority 18 performed read-only checks against linked project `bxngqqsxthybjikmwvqj`:
+
+- `supabase migration list --linked`: all 43 local migration versions through `202606230002` had matching remote entries.
+- `supabase functions list --project-ref bxngqqsxthybjikmwvqj`: all 14 repository Edge Function names were ACTIVE (`venue-status-ingest`, `besttime-prior-import`, `location-ingest`, `device-profile-summary`, `reward-ledger`, `account-sync`, `owner-dashboard`, `owner-actions`, `validate-staff-code`, `app-event-ingest`, `device-session`, `reports-feed`, `venue-analytics-ingest`, `early-access`).
+- These commands verify inventory, not deployed source hashes or behavior.
+- `SUPABASE_SERVICE_ROLE_KEY` was absent, so `npm run smoke:security:live` was not run. Full authorization parity remains unverified.
 
 ## Reports And Current-Night Readiness
 
@@ -137,9 +164,28 @@ No runtime code was removed in this pass. Old `lineLeap` fallback fields, legacy
 ## Verification Strategy
 
 - Static/source/reliability/security/PWA/app smoke and build remain required for this documentation change.
-- `smoke:security:live` requires a temporary service-role key and is reported unverified when unavailable.
+- `smoke:security:live` requires a temporary service-role key and is reported blocked when unavailable. Use the no-history command in `swift-feasibility-spike-preflight.md`.
 - The Swift spike must add native contract tests rather than treating web smoke as native proof.
+
+## Priority 18 Search Classification
+
+The required repo-wide term sweep (excluding `docs/archive/`, `node_modules/`, and build output) produced these classes:
+
+| Terms | Classification |
+| --- | --- |
+| APNs, push token, `push-token`, `user_push_tokens` | Canonical proposed native contract / **P0 gap**. No runtime table or function exists. |
+| `Notification.requestPermission`, browser notification, `navigator.geolocation` | Intentional web-reference implementation or “do not copy” native documentation. |
+| Core Location, PhotosPicker, Keychain | Canonical native guidance; no Swift/native files exist in this repo. |
+| `location-ingest`, `lat_exact`, `lng_exact` | Current backend implementation and migrations. Exact-coordinate cleanup is a **P0 full-rebuild gap**. |
+| retention, cleanup | Mix of current account cleanup and canonical missing routine-retention guidance; not evidence of a deployed schedule. |
+| profile photo, avatar, base64, storage, bucket | Current web profile implementation plus canonical object-storage gap. `bucket` also appears as unrelated crowd-scoring terminology in migrations. |
+| signed-device, device secret | Current implementation/security tests and canonical native lifecycle. Secret values remain server-only. |
+| auth callback, redirect, session refresh | Canonical spike guidance plus current web-only redirect config. The exact phrase `session refresh` did not occur; refresh behavior is documented as restore/refresh/refresh-once. |
+| account deletion | Current server implementation, UI/tests, and canonical cleanup requirements. |
+| `SUPABASE_SERVICE_ROLE_KEY`, `smoke:security:live` | Server/test-only. The secret is absent from this environment; live verification remains blocked. |
+
+Archived hits remain historical and non-canonical. No search result justified adding a new backend table/function in this pass.
 
 ## Final Recommendation
 
-Proceed with the small, disposable feasibility spike in `docs/swift-feasibility-spike-plan.md`. Do not create the full production Xcode project until every P0 gap has an approved contract or an explicit scope deferral. If profile photo and push are deferred, that deferral must be reflected in UI and App Store metadata rather than simulated locally.
+Proceed with the small, disposable feasibility spike using both `docs/swift-feasibility-spike-plan.md` and `docs/swift-feasibility-spike-preflight.md`. Do not create the full production Xcode project until every full-rebuild P0 is implemented and verified or explicitly removed from v1 scope. If profile photo or push is deferred, that deferral must be reflected in UI and App Store metadata rather than simulated locally.

@@ -18,6 +18,7 @@ Start here:
 - [`docs/native-location-services-spec.md`](docs/native-location-services-spec.md) — Core Location rules.
 - [`docs/native-push-notification-spec.md`](docs/native-push-notification-spec.md) — APNs plan and missing contract.
 - [`docs/swift-feasibility-spike-plan.md`](docs/swift-feasibility-spike-plan.md) — required proof before the full rebuild.
+- [`docs/swift-feasibility-spike-preflight.md`](docs/swift-feasibility-spike-preflight.md) — exact callback, Keychain, contract-order, and negative-test handoff.
 - [`docs/native-swift-rebuild-risk-map.md`](docs/native-swift-rebuild-risk-map.md) — P0/P1/P2 risks.
 - [`docs/native-rebuild-readiness-audit.md`](docs/native-rebuild-readiness-audit.md) — readiness decision and evidence.
 
@@ -64,7 +65,7 @@ See `docs/native-api-contract.md` before writing a client.
 
 ## Current Native Readiness
 
-Ready for a controlled Swift feasibility spike:
+Ready for a controlled Swift feasibility spike, with the explicit limitations in the preflight:
 
 - Supabase Auth/session foundation;
 - signed-device issuance/verification;
@@ -78,7 +79,9 @@ P0 decisions before the full native rebuild:
 2. add APNs token sync before enabling push delivery;
 3. replace profile data-URL avatars with reviewed object storage or defer photos;
 4. approve exact-location sampling and retention/cleanup;
-5. validate Keychain device-session lifecycle and deployed contract parity.
+5. validate Keychain device-session lifecycle and credentialed live authorization parity.
+
+Priority 18 verified linked migration inventory and active Edge Function inventory. It did not create APNs, Storage, or location-retention placeholders, and it did not run the credentialed live security suite because the temporary service-role key was unavailable. Those distinctions are recorded in `docs/native-rebuild-readiness-audit.md`.
 
 ## Run The Web Reference
 

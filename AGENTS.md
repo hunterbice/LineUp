@@ -8,6 +8,7 @@ LineUp v75 is the canonical product reference for a future fully native SwiftUI 
 - Do not add Capacitor, a WebView wrapper, or native files until a later task explicitly starts the Swift project.
 - The manifest and service worker are web-preview infrastructure only.
 - Read `docs/native-rebuild-product-spec.md`, `docs/native-api-contract.md`, `docs/native-v1-scope.md`, and `docs/native-swift-rebuild-risk-map.md` before native work.
+- Before a Swift spike, follow `docs/swift-feasibility-spike-preflight.md`. Do not infer missing APNs, avatar Storage, or retention infrastructure from a proposed contract.
 
 ## Non-Negotiable Truth
 
@@ -34,6 +35,7 @@ LineUp v75 is the canonical product reference for a future fully native SwiftUI 
 3. If a contract is missing or ambiguous, document the gap and stop rather than inventing it.
 4. Prefer narrow changes that preserve existing boundaries.
 5. Update canonical docs whenever a product or backend contract changes.
+6. Treat proposed schemas/endpoints as missing until their migration/function exists, is deployed, and has negative authorization tests.
 
 ## Verification
 

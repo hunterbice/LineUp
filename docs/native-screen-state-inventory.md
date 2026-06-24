@@ -25,7 +25,8 @@ This inventory translates v75 behavior into SwiftUI requirements. “Web equival
 - **Data/actions:** email, password, optional registration display name; sign up/sign in; password visibility.
 - **States:** idle, submitting, email confirmation required, invalid credentials, rate/network failure.
 - **Offline:** explain connection requirement; no fake signed-in session.
-- **Source:** Supabase Auth only. **Do not copy:** browser autofill/event rerender patterns.
+- **Source:** Supabase Auth email/password only. **Do not copy:** browser autofill/event rerender patterns.
+- **Native callback:** the disposable spike must register one exact custom-scheme callback derived from its bundle ID and route it through the Supabase Swift auth handler. Production callback remains a release configuration decision.
 
 ### Setup
 
@@ -143,14 +144,14 @@ This inventory translates v75 behavior into SwiftUI requirements. “Web equival
 - **Swift v1:** conditional on photo-storage hardening. **Web:** `renderProfilePhoto.js`, `profilePhotoController.js`.
 - **Data/actions:** PhotosPicker/camera image, circular crop, drag/reposition, remove/cancel/save.
 - **States:** loading/decoding, crop, compress/upload, unsupported format, failure.
-- **Swift notes:** use PhotosPicker and image renderer; remove EXIF/location metadata; upload compressed result to approved storage. Do not copy canvas or base64 as production design.
+- **Swift notes:** use PhotosPicker and image renderer; remove EXIF/location metadata; produce a square crop no larger than 512px and approximately 250KB or less. The spike may test the current compressed data-URL path only as compatibility evidence. Production upload remains blocked until the `profile-avatars` Storage read/write/delete and migration strategy is reviewed. Do not copy canvas or base64 as production design.
 
 ### Account
 
 - **Swift v1:** yes.
 - **Actions:** sign out, delete account; account identity context.
 - **States:** signed in, signing out, deletion confirmation/submitting/error.
-- **Source:** Supabase Auth and `account-sync`; no local account authority.
+- **Source:** Supabase Auth and `account-sync`; no local account authority. Ordinary logout clears account/session/profile/role state but may retain signed installation proof for abuse continuity. Confirmed account deletion clears both account credentials and the installation tuple.
 
 ### Permission Settings / Status
 

@@ -1,6 +1,6 @@
 # LineUp Native API And Backend Contract
 
-Baseline: v75 / `2a1ed10`. This document describes repository evidence, not a promise about undeployed production state. Verify deployed migrations/functions during the Swift spike.
+Baseline: v75 / `eff6455`. Priority 18 verified linked migration inventory and active Edge Function inventory on 2026-06-24, but did not prove deployed function source hashes or run the credentialed live authorization suite. See `docs/swift-feasibility-spike-preflight.md`.
 
 ## Transport Rules
 
@@ -19,8 +19,14 @@ Baseline: v75 / `2a1ed10`. This document describes repository evidence, not a pr
 - **Auth/device:** email/password creates the auth session; device proof is separate.
 - **Request/response:** Supabase Swift SDK email/password APIs; returns `User` and `Session` with access/refresh tokens.
 - **Errors/abuse/privacy:** invalid credentials, confirmation-required, expired refresh, network, rate limits. Never log passwords/tokens.
-- **Status / priority:** **needs hardening, P0**. Native redirect/deep-link and email-confirmation URLs are not configured; current config lists web URLs only.
-- **Swift instruction:** prove signup, confirmation/deep link if enabled, login, refresh after relaunch, and logout in the spike. Do not mirror custom web session state.
+- **Supported providers:** email/password only. The current product does not implement magic link, OAuth, anonymous Supabase Auth, or Sign in with Apple.
+- **Callback contract:** choose a disposable spike bundle ID, derive one exact `<bundle-id>://auth/callback` URL, and add only that URL to the Supabase Auth redirect allowlist. Route opened URLs through the Supabase Swift auth URL handler. Do not add wildcard redirect rules. The production bundle ID remains a release decision.
+- **Confirmation behavior:** inspect the test project's actual email-confirmation setting. Sign-up may return a user without a session when confirmation is enabled. The client must wait for the callback/session rather than treating account creation as authentication.
+- **Persistence:** use the Supabase Swift session model with a Keychain-backed storage adapter. On launch/foreground, restore the session and refresh when required. On an authenticated request 401, refresh once and retry once; if refresh fails, clear account state and return to sign-in.
+- **Separation:** Supabase access/refresh tokens are account credentials. The LineUp signed-device token is a separate installation proof and must never be substituted for a JWT.
+- **Logout:** call Supabase sign-out and clear JWT/profile/role caches. Retain the LineUp installation tuple across ordinary logout for anti-abuse continuity.
+- **Status / priority:** **spike-ready with required preflight, P0 proof**. Repository config still contains web redirects only because the native bundle ID has not been approved.
+- **Swift instruction:** follow the exact preflight in `docs/swift-feasibility-spike-preflight.md`; do not invent providers, redirect URLs, or custom session truth.
 
 ## 2. Signed Device Session
 
@@ -30,8 +36,13 @@ Baseline: v75 / `2a1ed10`. This document describes repository evidence, not a pr
 - **Request:** `{device_id?, session_id?, device_token?}`.
 - **Response:** `{ok, device_id, session_id, device_token, expires_in_seconds}`; current TTL 30 days.
 - **Errors/rate/privacy:** 401 invalid/expired proof, 429 issuance limit, 500 missing secret. IDs are pseudonymous but user-linked after account claim.
-- **Status / priority:** **ready for spike, P0**; native Keychain/installation-ID lifecycle needs a written production decision.
-- **Swift instruction:** encapsulate as `DeviceSessionProvider`; renew before five-minute expiry margin; never invent a token or trust a cached ID without server proof.
+- **Current cryptography:** server-issued HMAC-SHA256 token with `device_id`, `session_id`, `iat`, and `exp`; signature, device binding, and expiry are validated in `_shared/security.ts`.
+- **Native storage:** persist `{device_id,session_id,device_token,expires_at}` as one Keychain record using a ThisDeviceOnly accessibility class appropriate for foreground use. Never use UserDefaults.
+- **Lifecycle:** first call omits proof and accepts server-generated IDs; renew before the five-minute expiry margin; on invalid/expired 401 clear the tuple, obtain one new server-issued tuple, and retry once. A second failure is a real service error.
+- **Logout/deletion:** preserve installation proof through ordinary logout; after confirmed account deletion clear both account secrets and the installation tuple. Record reinstall behavior during the spike rather than assuming Keychain deletion semantics.
+- **Current limitation:** there is no per-token revocation list. A compromised token lasts until its 30-day expiry unless the global HMAC secret rotates.
+- **Status / priority:** **closed by existing implementation for the spike, P0 proof required**. Per-token revocation is P1 production hardening.
+- **Swift instruction:** encapsulate as `DeviceSessionProvider`; never invent a token, trust an unverified cached ID, or treat this proof as user authentication.
 
 ## 3. Account And Profile Setup
 
@@ -89,11 +100,12 @@ Baseline: v75 / `2a1ed10`. This document describes repository evidence, not a pr
 
 - **Purpose / Swift v1:** associate APNs tokens with account/device and notification preferences; **required before sending push**.
 - **Current implementation:** **missing**. No table or Edge Function stores APNs tokens.
-- **Proposed request:** authenticated signed-device endpoint with `{apns_token,environment,device_id,app_version,locale,enabled_categories}` and unregister action.
+- **Proposed request:** authenticated signed-device endpoint with `{action:"register"|"update_preferences"|"unregister",apns_token,environment,device_id,app_version,locale,enabled_categories}`.
 - **Proposed response:** `{ok,registered,updated_at}`.
 - **Errors/abuse/privacy:** self-bound token only; upsert by token/installation; revoke on logout/deletion; rate limit; never expose tokens to venues.
-- **Status / priority:** **missing, P0 for push; P1 if Swift v1 ships without delivery**.
-- **Swift instruction:** do not send or locally pretend registration succeeded until this endpoint and migration are reviewed and deployed.
+- **Repository evidence:** no `user_push_tokens` table, token-sync Edge Function, sender, APNs credential integration, or account-deletion cleanup exists.
+- **Status / priority:** **spike-ready with documented limitation** for authorization/token acquisition only; **P0 for enabling push or full rebuild scope that promises delivery**.
+- **Swift instruction:** the spike may acquire an APNs sandbox token and record it redacted. Do not call, mock, or locally pretend a LineUp registration endpoint exists until a reviewed migration/function is deployed.
 
 ## 9. Location Permission Status
 
@@ -112,8 +124,10 @@ Baseline: v75 / `2a1ed10`. This document describes repository evidence, not a pr
 - **Request:** `{action:"presence"|"check_in"|"report",venue_id?,lat?,lng?,accuracy_m,interaction_visibility,display_name?,avatar_url?,crowd_level?,wait_minutes?,cover_amount?,cover_active?,device proof}`. Non-report actions require valid coordinates; report may omit them.
 - **Response:** presence returns nearest venue/distance/area/verification; check-in returns target, verification and checkin row; report returns report row, verification, and whether signal was used.
 - **Errors/rate/privacy:** 6 reports/15m/device, 5 check-ins/15m/device, 30 presence updates/15m/device; unknown venue/location errors. Exact and rounded coordinates are currently stored in owner-only presence rows.
-- **Status / priority:** **needs privacy hardening, P0 for full rebuild**. Define retention/deletion and native sampling before production native telemetry.
-- **Swift instruction:** send foreground/event-driven samples only; no background tracking; do not expose individual coordinates to venues.
+- **Current retention:** account deletion removes user/device-linked presence, but there is no routine expiry job. Owner dashboard reads exact coordinates only from active 15/60-minute windows and coarse operational rows for 24 hours.
+- **Required target contract:** exact latitude/longitude must be redacted or deleted within 24 hours; rounded operational presence may remain for at most 30 days; only de-identified aggregate venue statistics may be retained longer. Product/legal/security must approve it, and a reviewed scheduled cleanup plus verification query must exist before full native release.
+- **Status / priority:** **spike-ready with disposable-account limitation**; **P0 for full rebuild** until cleanup is implemented, deployed, and verified.
+- **Swift instruction:** send foreground/event-driven samples only; no background tracking; delete disposable spike accounts; do not expose individual coordinates to venues.
 
 ## 11. Live Venues And Status
 
@@ -186,8 +200,10 @@ Baseline: v75 / `2a1ed10`. This document describes repository evidence, not a pr
 - **Request:** current web sends a compressed 512px JPEG data URL inside `preferences.avatar_url` (max 250,000 chars).
 - **Response:** normal updated profile.
 - **Errors/privacy:** unsupported image/decode/size, JSON/body/storage growth. Avatar is public only when interaction visibility is public.
-- **Status / priority:** **needs hardening, P0 for full native photo launch**.
-- **Swift instruction:** spike current compatibility, but design Supabase Storage bucket, self-scoped upload policy, content validation, URL lifecycle, deletion, and orphan cleanup before production.
+- **Target object contract:** a reviewed `profile-avatars` Storage design with self-scoped write/delete, authenticated or explicitly approved public read, server-validated JPEG/WebP, stripped metadata, square crop, maximum 512px output, and a target binary size no larger than 250KB. The final object path/read model must be selected before migration; do not assume public URLs or expiring signed URLs fit public report identity.
+- **Transition:** existing `data:image/` rows remain readable during migration. A migration tool must upload/validate each legacy value, update `avatar_url` only after successful object creation, and retain rollback evidence. Orphan cleanup and account deletion must remove current and replaced objects.
+- **Status / priority:** **spike-ready for compatibility only**; **P0 for full native photo launch**. No bucket or Storage policy exists today.
+- **Swift instruction:** the spike may omit photos or prove the current compressed data-URL path and label it transitional. Production uses PhotosPicker, metadata stripping, crop/compression, reviewed object upload, and backend-confirmed profile update.
 
 ## 18. Account Deletion
 
@@ -196,7 +212,7 @@ Baseline: v75 / `2a1ed10`. This document describes repository evidence, not a pr
 - **Auth/device:** JWT + signed device; user ID derives from JWT.
 - **Request:** `{action:"delete_account",confirm:"DELETE",device proof}`.
 - **Response:** `{ok:true,deleted:true}` followed by local sign-out/secret removal.
-- **Errors/privacy:** 400 confirmation, 401 auth/device, 500 cleanup. Historical/de-identified aggregates may remain only as documented.
+- **Errors/privacy:** 400 confirmation, 401 auth/device, 500 cleanup. Historical/de-identified aggregates may remain only as documented. Future push-token rows and avatar objects must be added to this cleanup before those systems ship.
 - **Status / priority:** **ready, P0**.
 - **Swift instruction:** destructive confirmation, call once, clear Keychain/caches after confirmation, never accept target user ID.
 
@@ -257,8 +273,11 @@ Baseline: v75 / `2a1ed10`. This document describes repository evidence, not a pr
 
 ## Native P0 Contract Gaps
 
-1. Native auth callback/deep-link and confirmation configuration.
-2. APNs token registration/unregistration endpoint and schema if push ships.
-3. Profile avatars moved from large data URLs to reviewed object storage.
-4. Precise presence retention/sampling policy and cleanup mechanism.
-5. Keychain-backed installation/device-token lifecycle validated against `device-session`.
+| Item | Swift spike status | Full rebuild status |
+| --- | --- | --- |
+| Native auth callback/session | Spike-ready after exact disposable callback allowlist entry; on-device proof required | Blocked until production bundle ID/callback and restore/refresh are approved |
+| APNs token lifecycle | Token acquisition may be tested; no backend sync call exists | Blocked if push delivery remains in scope |
+| Profile photo storage | Current compressed data URL is compatibility-only; photo may be omitted | Blocked if profile photo ships without reviewed object storage |
+| Exact-location retention | Disposable foreground samples plus account deletion are acceptable | Blocked until scheduled 24-hour exact / 30-day rounded cleanup is deployed and verified |
+| Signed-device lifecycle | Existing server contract is ready; Keychain behavior is a required spike proof | P1 per-token revocation remains, but current proof does not block the spike |
+| Deployed parity / live authorization | Migration and active-function inventories were checked 2026-06-24 | Live security suite remains blocked without temporary service-role credential |

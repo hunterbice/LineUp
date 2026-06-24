@@ -6,12 +6,14 @@ Build a disposable, minimal SwiftUI proof project later. It is not the productio
 
 Recommended timebox: **5–8 focused engineering days**, followed by a go/no-go review. Stop early on a P0 contract failure rather than hiding it behind fixtures.
 
+Use `docs/swift-feasibility-spike-preflight.md` as the execution runbook. This plan defines scope; the preflight defines callback, Keychain, contract order, negative tests, and evidence.
+
 ## Goals
 
 Prove on simulator and one physical iPhone:
 
 1. Supabase Swift email/password registration, confirmation/deep link if enabled, login, refresh after relaunch, and logout.
-2. Keychain-backed JWT/session handling.
+2. Keychain-backed Supabase session handling and exact custom-scheme callback proof.
 3. `device-session` issuance, renewal, invalid-token denial, and installation-ID persistence.
 4. `account-sync claim` profile/favorites/permissions fetch.
 5. `account-sync update_profile` without avatar first.
@@ -22,8 +24,8 @@ Prove on simulator and one physical iPhone:
 10. `reports-feed` fetch.
 11. one structured unverified report via `location-ingest` and one foreground-location report/check-in using Core Location.
 12. post-report feed refresh followed by Live refresh.
-13. profile photo path: test current compressed data-URL compatibility, then separately prove proposed Supabase Storage upload/URL contract before production approval.
-14. APNs registration callback and token acquisition in sandbox; sync only if the reviewed backend endpoint exists, otherwise record the missing-contract blocker.
+13. optional profile photo path: omit it or test current compressed data-URL compatibility; do not invent a Storage path.
+14. optional APNs authorization and sandbox token acquisition; no LineUp token sync endpoint exists.
 15. `account-sync delete_account` with a disposable self-only account.
 
 ## Non-Goals
@@ -34,6 +36,7 @@ Prove on simulator and one physical iPhone:
 - Full offline synchronization.
 - Shipping to TestFlight/App Store.
 - Replacing or bypassing existing Edge Functions/RLS.
+- Building APNs delivery, profile-photo Storage, location cleanup, or a production app architecture inside the spike.
 
 ## Proof App Shape
 
@@ -47,19 +50,22 @@ Prove on simulator and one physical iPhone:
 
 - No invented endpoint, table, RPC, role, or response field.
 - Session and signed-device token survive relaunch securely.
+- Confirmation-required signup routes through the one allowlisted disposable callback, if enabled in the test project.
 - Invalid JWT, mismatched device proof, cross-user, and unauthenticated paths fail as expected.
 - Live and Deals decode production-shaped responses without fixtures.
 - Report receives a server report ID; UI does not mutate status until refresh.
 - 5 AM America/Phoenix filtering matches web/backend tests around 4:59/5:00 and after midnight.
 - Core Location denial still permits manual campus browsing and unverified report submission.
 - Account deletion removes only the disposable current user and clears Keychain.
+- Ordinary logout clears account state without turning cached roles into authority; confirmed account deletion also clears the installation tuple.
 - The spike produces a contract-gap report and updated canonical docs.
 
 ## Test Accounts And Data
 
 - Disposable ordinary student accounts only; never owner/staff credentials in the app.
 - One active test venue and valid current deal/report fixtures created through approved backend/admin paths, not direct production fabrication.
-- Separate sandbox APNs environment and test bundle ID.
+- A disposable bundle ID and one exact `<bundle-id>://auth/callback` allowlist entry.
+- Separate sandbox APNs environment only if token acquisition is included.
 - Explicit approval before writing production rows; prefer a non-production Supabase project or clearly tagged disposable records.
 - Service-role key remains outside the app and is used only by controlled test tooling.
 
@@ -74,13 +80,24 @@ Prove on simulator and one physical iPhone:
 
 ## Risks To Resolve
 
-- Native auth redirect URLs are absent from `supabase/config.toml`.
-- APNs token sync is missing.
-- Profile avatar uses a large data URL instead of object storage.
-- Precise presence retention is undefined.
-- Signed-device IDs/tokens need Keychain/reinstall semantics.
+- Native auth redirect URLs are absent from `supabase/config.toml`; the spike must add one exact disposable callback after selecting its bundle ID.
+- APNs token sync is missing; token acquisition may be tested, delivery may not.
+- Profile avatar uses a compressed data URL instead of object storage; compatibility is not production approval.
+- Exact/rounded presence cleanup is not deployed; the target maximums are 24 hours exact and 30 days rounded.
+- Signed-device server proof is ready, but Keychain/reinstall/logout/deletion semantics need device evidence.
 - Supabase Realtime behavior, reconnect, and battery impact need measurement.
-- Production deployment may drift from repository functions/migrations.
+- Priority 18 matched 43 linked migration versions and found all 14 repository functions active, but function source parity/live authorization still may drift.
+
+## Spike Blocking Versus Full-Rebuild Blocking
+
+| Gap | Blocks spike | Blocks full rebuild |
+| --- | --- | --- |
+| Production auth callback not approved | No; use one disposable callback | Yes |
+| APNs sync absent | No; omit push or test acquisition only | Yes if push delivery remains in scope |
+| Object-storage avatar absent | No; omit or compatibility-test | Yes if photo remains in scope |
+| Routine location cleanup absent | No; use disposable foreground data and delete account | Yes |
+| Keychain device lifecycle unproven | It is the spike proof, not a pre-spike blocker | Yes if the proof fails |
+| Live security smoke credential unavailable | No for a disposable integration proof | Yes for security signoff |
 
 ## Full Rebuild Blockers
 
@@ -106,3 +123,5 @@ Do not start the full Swift project if any remain:
 - photo-storage decision;
 - push decision;
 - recommendation to begin, narrow, or block the full rebuild.
+
+The first task is: select the disposable bundle identifier, create its exact callback allowlist entry in the test Supabase project, then execute auth/session Goal 1 before adding any other screen.
