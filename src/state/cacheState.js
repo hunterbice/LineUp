@@ -44,6 +44,26 @@ export function saveRecentVenue(venueId) {
 }
 export function clearRecentVenues() { localStorage.removeItem("lineup_recent_venues"); }
 
+function permissionEducationKey(userId) {
+  return `lineup_permission_education_${String(userId || "").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 80)}`;
+}
+export function getPermissionEducationState(userId) {
+  if (!userId) return { step: "notifications", completed: false };
+  const value = readJson(permissionEducationKey(userId), null);
+  return {
+    step: value && value.step === "location" ? "location" : "notifications",
+    completed: Boolean(value && value.completed),
+  };
+}
+export function setPermissionEducationStep(userId, step) {
+  if (!userId) return { step: "notifications", completed: false };
+  return writeJson(permissionEducationKey(userId), { step: step === "location" ? "location" : "notifications", completed: false });
+}
+export function completePermissionEducation(userId) {
+  if (!userId) return { step: "location", completed: true };
+  return writeJson(permissionEducationKey(userId), { step: "location", completed: true });
+}
+
 export function getArea() { return localStorage.getItem("lineup_area") || "main_gate"; }
 export function setArea(value) { localStorage.setItem("lineup_area", value); return value; }
 

@@ -82,7 +82,7 @@ body[data-page="accountGate"] .bottomnav{display:none}
 .ownerPreviewStrip b{display:block;font-size:13px}.ownerPreviewStrip span{display:block;margin-top:3px;color:var(--sub);font-size:11px;font-weight:800}.ownerPreviewStrip .secondaryBtn{width:auto;min-width:128px;height:42px;padding:0 12px}
 .field,select.field,input.field,textarea.field{max-width:100%;min-width:0;font-size:16px;line-height:1.2}.choicegrid{grid-template-columns:repeat(auto-fit,minmax(76px,1fr))}.choicegrid button{min-width:0;overflow-wrap:anywhere;line-height:1.1}.sheetActions{grid-template-columns:repeat(auto-fit,minmax(118px,1fr));align-items:stretch}.sheetActions .secondaryBtn,.sheetActions .submit{min-width:0;height:auto;min-height:50px;padding:9px 10px;line-height:1.15}.adminMini{grid-template-columns:repeat(2,minmax(0,1fr))}.adminVenueHeader{min-width:0}.adminVenueHeader>div{min-width:0}.adminVenueHeader span{overflow-wrap:anywhere}.tabs2,.seg{min-width:0;overflow-x:auto;scrollbar-width:none}.tabs2::-webkit-scrollbar,.seg::-webkit-scrollbar{display:none}
 @media (max-width:380px){.ownerPreviewStrip{align-items:flex-start;flex-direction:column}.ownerPreviewStrip .secondaryBtn{width:100%}.adminMini,.ctaGrid,.dealPerfGrid{grid-template-columns:1fr}.locationStatus{align-items:flex-start;flex-direction:column}.locationStatus span{text-align:left}.profileGrid{grid-template-columns:repeat(2,1fr)}}
-body[data-page="accountGate"] .bottomnav,body[data-page="setupGate"] .bottomnav,body[data-page="accountGate"] .seg,body[data-page="setupGate"] .seg{display:none}
+body[data-page="accountGate"] .bottomnav,body[data-page="setupGate"] .bottomnav,body[data-page="permissionGate"] .bottomnav,body[data-page="accountGate"] .seg,body[data-page="setupGate"] .seg,body[data-page="permissionGate"] .seg{display:none}
 body[data-page="accountGate"] .topbar,body[data-page="setupGate"] .topbar{position:relative}
 .accountGate .field{margin-bottom:2px}.appleBtn{margin:8px 0 14px}.linkBtn{border:0;background:transparent;color:var(--brand);font:inherit;font-weight:900;padding:0;cursor:pointer}.setupGate{justify-content:flex-start}.setupAvatar{margin:0 0 16px}.profileMark img{width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block}.smallAvatar{width:74px;height:74px;margin:0 0 12px;font-size:34px}.favSetup{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.favSetup button{min-height:42px;border:1px solid var(--border);border-radius:13px;background:var(--surface-2);color:var(--sub);font-weight:900;cursor:pointer;padding:8px}.favSetup button.on{border-color:rgba(37,99,235,.62);background:var(--brand-soft);color:var(--brand)}.allFavs{grid-template-columns:1fr}
 .accountHero{padding:20px 0 16px}.accountHero .profileMark{overflow:hidden}.compactBtn{max-width:180px;margin:14px auto 0}.profileMenu{display:grid;gap:9px}.profileMenuItem{width:100%;min-height:58px;border:1px solid var(--border);border-radius:16px;background:var(--card);color:var(--text);display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:left;padding:12px 13px;cursor:pointer}.profileMenuItem b{display:block;font-size:14px}.profileMenuItem small{display:block;margin-top:4px;color:var(--sub);font-size:11px;font-weight:800}.profileMenuItem svg{color:var(--sub);flex:0 0 auto}.backBtn{display:inline-flex;align-items:center;gap:7px;margin:0 0 14px;border:1px solid var(--border);border-radius:999px;background:var(--surface-2);color:var(--sub);font-weight:900;padding:9px 12px;cursor:pointer}.logoutBtn{margin-top:14px}.accountCard .adminMini{grid-template-columns:minmax(0,1fr) 96px}
@@ -272,4 +272,44 @@ body[data-page="accountGate"] .accountGate,body[data-page="setupGate"] .accountG
   #app.ptr-animate,.detailStage.ptr-animate{transition-duration:.01ms}
   .ptr{transition-duration:.01ms}
   .ptr.loading .ptr-spin{animation:none}
+}
+
+/* Priority 17B: permission education and native-feeling profile photo flow. */
+.permissionGate{display:flex;flex-direction:column;align-items:stretch;text-align:center;padding-top:32px}
+.permissionGate .earlyAccessPill{align-self:center}
+.permissionGate h1{margin-top:20px}
+.permissionGate>p{max-width:340px;margin-left:auto;margin-right:auto}
+.permissionHeroIcon{width:82px;height:82px;margin:22px auto 0;border-radius:28px;display:grid;place-items:center;color:var(--brand);background:var(--brand-soft);border:1px solid var(--brand-border);box-shadow:var(--shadow-card)}
+.permissionActions{display:grid;gap:10px;margin-top:24px}
+.permissionSkip{min-height:48px;border:0;background:transparent;color:var(--sub);font-size:14px;font-weight:850;cursor:pointer}
+.permissionResult{display:grid;gap:4px;margin-top:20px;padding:14px 16px;border:1px solid var(--border);border-radius:14px;background:var(--surface-2);text-align:left}
+.permissionResult b{font-size:14px}.permissionResult span{color:var(--sub);font-size:12px;line-height:1.4}
+.permissionResult.result-granted{border-color:rgba(22,163,74,.22);background:rgba(22,163,74,.07)}
+.permissionResult.result-denied{border-color:rgba(220,38,38,.18);background:rgba(220,38,38,.05)}
+
+.avatarEditor{position:relative;width:116px;height:116px;margin:8px auto 4px}
+.avatarCircle{width:112px;height:112px;border-radius:50%;display:grid;place-items:center;overflow:hidden;background:#E5EAF2;border:1px solid var(--border-strong);color:#8492A6;box-shadow:inset 0 1px 0 rgba(255,255,255,.8)}
+.avatarCircle img{width:100%;height:100%;object-fit:cover;display:block}
+.avatarCamera{position:absolute;right:0;bottom:4px;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;border:3px solid var(--bg);background:var(--brand);color:#FFFFFF;box-shadow:0 7px 18px rgba(37,99,235,.24);cursor:pointer}
+.avatarCamera:focus-visible{outline:3px solid var(--brand-glow);outline-offset:2px}
+.photoOptional{text-align:center;margin:3px auto 18px}
+
+.photoActionSheet,.photoCropSheet{padding-bottom:max(4px,env(safe-area-inset-bottom))}
+.sheetHandle{width:38px;height:5px;border-radius:99px;background:#CBD5E1;margin:-3px auto 16px}
+.photoSheetAction{width:100%;min-height:54px;display:flex;align-items:center;gap:13px;padding:0 14px;border:0;border-top:1px solid var(--border);background:transparent;color:var(--text);font-size:15px;font-weight:850;text-align:left;cursor:pointer}
+.photoSheetAction:first-of-type{margin-top:12px}
+.photoActionGlyph{width:20px;text-align:center;color:var(--brand);font-size:20px;font-weight:900}
+.photoSheetAction svg{color:var(--brand);flex:0 0 auto}
+.photoSheetAction.dangerText{color:var(--danger)}
+.photoSheetCancel{width:100%;min-height:52px;margin-top:10px;border:0;border-radius:13px;background:var(--surface-2);color:var(--sub);font-size:14px;font-weight:900;cursor:pointer}
+.photoCropFrame{width:min(268px,74vw);aspect-ratio:1;margin:18px auto 10px;border-radius:50%;overflow:hidden;background:#E5EAF2;border:4px solid #FFFFFF;box-shadow:0 0 0 1px var(--border-strong),var(--shadow-card);touch-action:none}
+.photoCropFrame canvas{width:100%;height:100%;display:block;cursor:grab;touch-action:none;outline:0}
+.photoCropFrame canvas.dragging{cursor:grabbing}
+.photoCropFrame canvas:focus-visible{box-shadow:inset 0 0 0 4px var(--brand)}
+.photoCropHint{text-align:center;color:var(--muted);font-size:12px;font-weight:750}
+
+@media (max-width:390px){
+  .permissionGate{padding-top:24px}
+  .permissionHeroIcon{margin-top:18px}
+  .photoCropFrame{width:min(250px,72vw)}
 }

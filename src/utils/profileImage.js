@@ -26,6 +26,33 @@ function canvasDataUrl(image, width, height, quality) {
   return canvas.toDataURL("image/jpeg", quality);
 }
 
+function compressedCanvasDataUrl(canvas) {
+  const qualities = [0.84, 0.74, 0.64, 0.54];
+  for (const quality of qualities) {
+    const dataUrl = canvas.toDataURL("image/jpeg", quality);
+    if (dataUrl.length <= PROFILE_IMAGE_MAX_DATA_URL_LENGTH) return dataUrl;
+  }
+  throw new Error("LineUp could not make this photo small enough. Try a different JPEG, PNG, or WebP image.");
+}
+
+export async function prepareProfileImage(file) {
+  if (!file || !String(file.type || "").startsWith("image/")) throw new Error("Choose a JPEG, PNG, or WebP image.");
+  const image = await loadImage(file);
+  const sourceWidth = image.naturalWidth || image.width;
+  const sourceHeight = image.naturalHeight || image.height;
+  if (!sourceWidth || !sourceHeight) throw new Error("LineUp could not read this photo.");
+  const maxSourceDimension = 1400;
+  const scale = Math.min(1, maxSourceDimension / Math.max(sourceWidth, sourceHeight));
+  const width = Math.max(1, Math.round(sourceWidth * scale));
+  const height = Math.max(1, Math.round(sourceHeight * scale));
+  return { dataUrl: canvasDataUrl(image, width, height, 0.88), width, height };
+}
+
+export function compressProfileCrop(canvas) {
+  if (!canvas || canvas.width !== 512 || canvas.height !== 512) throw new Error("Photo crop is unavailable. Try again.");
+  return compressedCanvasDataUrl(canvas);
+}
+
 export async function resizeProfileImage(file) {
   if (!file || !String(file.type || "").startsWith("image/")) throw new Error("Choose a JPEG, PNG, or WebP image.");
   const image = await loadImage(file);

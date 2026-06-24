@@ -8,6 +8,7 @@ import { hydrateVenues } from "../src/controllers/retentionController.js";
 import { createDealController, groupDealsByVenue, isDealCurrent, selectActiveDeals, selectDashboardDeals } from "../src/controllers/dealController.js";
 import { createVenueStaffController } from "../src/controllers/venueStaffController.js";
 import { createEarlyAccessController } from "../src/controllers/earlyAccessController.js";
+import { createPermissionController } from "../src/controllers/permissionController.js";
 import { venueAnalyticsTestHooks } from "../src/services/venueAnalyticsService.js";
 import { venueDealTestHooks } from "../src/services/venueDealService.js";
 import { renderDetailHtml, renderDetailPanel, renderReportRows } from "../src/ui/renderBarDetail.js";
@@ -19,6 +20,8 @@ import { renderOwnerDashboardHtml } from "../src/ui/renderOwnerDashboard.js";
 import { renderProfilePageHtml } from "../src/ui/renderProfile.js";
 import { renderReportSheetHtml } from "../src/ui/renderReportSheet.js";
 import { renderVenueControlsForBar } from "../src/ui/renderVenueControls.js";
+import { renderPermissionEducationHtml, renderSetupGateHtml } from "../src/ui/renderShell.js";
+import { renderAvatarEditor, renderPhotoCropSheet, renderPhotoSourceSheet } from "../src/ui/renderProfilePhoto.js";
 import { filterCurrentNightReports, nightlifeWindowStart } from "../src/utils/nightlife.js";
 import { PROFILE_IMAGE_MAX_DATA_URL_LENGTH, PROFILE_IMAGE_MAX_DIMENSION } from "../src/utils/profileImage.js";
 
@@ -31,6 +34,7 @@ const config = fs.readFileSync(path.join(root, "src/config.js"), "utf8");
 const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
 const styles = fs.readFileSync(path.join(root, "src/styles.css"), "utf8");
 const shellRenderer = fs.readFileSync(path.join(root, "src/ui/renderShell.js"), "utf8");
+const permissionControllerSource = fs.readFileSync(path.join(root, "src/controllers/permissionController.js"), "utf8");
 const profileRenderer = fs.readFileSync(path.join(root, "src/ui/renderProfile.js"), "utf8");
 const dealsPageRenderer = fs.readFileSync(path.join(root, "src/ui/renderDealsPage.js"), "utf8");
 const dealsRenderer = fs.readFileSync(path.join(root, "src/ui/renderDeals.js"), "utf8");
@@ -63,6 +67,8 @@ assert.doesNotMatch(cacheState, /export function getInstallPromptState|export fu
 assert.match(cacheState, /lineup_recent_venues/, "recent venues should use a dedicated cache key");
 assert.match(cacheState, /venueId/, "recent venue cache should store venue IDs");
 assert.match(cacheState, /viewedAt/, "recent venue cache should store timestamps");
+assert.match(cacheState, /lineup_permission_education_/, "permission education progress should use a dedicated UI-only key");
+assert.doesNotMatch(cacheState.match(/function permissionEducationKey[\s\S]*?export function getArea/)?.[0] || "", /granted|denied|coordinates|location_pref|notification_pref/, "permission education cache must not store actual permission truth");
 const recentCacheBlock = cacheState.match(/export function getRecentVenues[\s\S]*?export function getArea/)?.[0] || "";
 assert.doesNotMatch(recentCacheBlock, /\b(status|crowd|crowd_level|wait|wait_minutes|report|reports|live_status|confidence)\b/, "recent venue cache must not store live status fields");
 assert.doesNotMatch(main, /lineup_bar_updates|lineup_local_reports/, "main must not read legacy local source-of-truth keys");
@@ -73,8 +79,8 @@ ordered(main, [/ownerAction\("venue_live_update"/, /loadSupabaseStatus\(\)/, /ow
 ordered(main, [/ownerAction\("set_venue_status"/, /loadSupabaseStatus\(\)/, /ownerRequest\(\)/], "owner status flow");
 assert.doesNotMatch(main, /Local update saved|saved locally/, "staff/report UI should not claim local mutation");
 assert.equal(sw, publicSw, "public service worker must match root service worker");
-assert.equal(config.match(/APP_VERSION\s*=\s*"([^"]+)"/)?.[1], "v74", "APP_VERSION should be v74");
-assert.match(sw, /lineup-pwa-v74/, "service worker should be v74");
+assert.equal(config.match(/APP_VERSION\s*=\s*"([^"]+)"/)?.[1], "v75", "APP_VERSION should be v75");
+assert.match(sw, /lineup-pwa-v75/, "service worker should be v75");
 assert.match(html, /data-page="highlightsPage"[^>]*aria-label="Deals"/, "main navigation should expose Deals");
 assert.doesNotMatch(html, />Pulse</, "main navigation must not expose the retired Pulse label");
 assert.match(html, /data-theme="light"/, "HTML should default to light mode");
@@ -93,11 +99,23 @@ assert.doesNotMatch(main, /mapbox:\/\/styles\/mapbox\/dark-v11/, "maps should no
 assert.doesNotMatch(main + shellRenderer + profileRenderer, /Add to Home Screen|Install LineUp|beforeinstallprompt|maybeShowAfterSplash/, "student runtime must not retain install promotion behavior");
 assert.doesNotMatch(main, /function renderStats|NIGHT INTEL|Signal Profile/, "retired Intel and Signal Profile renderers must not remain reachable");
 assert.match(shellRenderer, /togglePasswordVisibility\('authPassword',this\)/, "auth password field should expose an accessible visibility toggle");
-assert.match(shellRenderer, /Choose from Library/, "profile setup should use a custom photo picker");
+assert.doesNotMatch(renderSetupGateHtml({ mode: "anonymous", displayName: "Test", avatarUrl: "" }), />Notifications<|>Use Location</, "core setup should not contain direct permission buttons");
+assert.match(styles, /body\[data-page="permissionGate"\] \.bottomnav/, "permission education should hide the main app navigation until the flow finishes");
+assert.match(renderSetupGateHtml({ mode: "anonymous", displayName: "Test", avatarUrl: "" }), /avatarCircle[\s\S]*avatarCamera/, "setup should use a circular avatar editor with camera action");
+assert.match(renderPermissionEducationHtml({ step: "notifications" }), /Stay in the loop[\s\S]*Enable Notifications[\s\S]*Not Now/, "notification education should explain value before offering the prompt");
+assert.match(renderPermissionEducationHtml({ step: "location" }), /Make nearby reads better[\s\S]*Enable Location[\s\S]*Not Now/, "location education should remain optional");
+assert.match(renderPhotoSourceSheet({ target: "setup", hasPhoto: true }), /Take Photo[\s\S]*Choose from Library[\s\S]*Remove Current Photo[\s\S]*Cancel/, "photo sheet should expose native-style source and removal actions");
+assert.doesNotMatch(renderPhotoSourceSheet({ target: "setup", hasPhoto: false }), /Remove Current Photo/, "photo sheet should hide removal when no photo exists");
+assert.match(renderPhotoCropSheet(), /photoCropCanvas[\s\S]*Cancel[\s\S]*Save Photo/, "photo selection should require a crop-position confirmation");
+assert.match(renderAvatarEditor("setup", ""), /avatarCircle[\s\S]*Add profile photo/, "empty avatar should use a circular person placeholder, not an initial");
 assert.equal(PROFILE_IMAGE_MAX_DIMENSION, 768, "profile photos should be resized before upload");
 assert.ok(PROFILE_IMAGE_MAX_DATA_URL_LENGTH < 250000, "profile photo output should remain below backend preference limits");
 assert.match(reportsFeed, /\.gte\("created_at",\s*currentTucsonNightStart/, "reports feed should filter records at the current-night boundary");
 assert.match(eventMigration, /event_updated_at[\s\S]*interval '5 hours'/, "active event view should enforce a 5 AM Tucson nightlife boundary");
+assert.doesNotMatch(main, /catch\(function\(\)\{startLiveLocationWatch\(true\)\}\)|catch\(function\(\)\{return capturePresence/, "background permission-query failures must not trigger location prompts");
+assert.doesNotMatch(main.match(/function liveLocationAllowed\(\)[\s\S]*?\}/)?.[0] || "", /accountPrefs\.location_pref/, "saved preference must not authorize live location watching");
+assert.match(permissionControllerSource, /requestPermission\(\)/, "notification prompt should live behind the explicit permission controller request");
+assert.match(permissionControllerSource, /readLocationStatus[\s\S]*permissions\.query/, "location status should use the browser Permissions API where available");
 assert.doesNotMatch(shellRenderer + profileRenderer + dealsPageRenderer, /coming soon|\bdemo\b/i, "public student copy should not expose unfinished or demo language");
 assert.match(shellRenderer, /Join Early Access[\s\S]*University of Arizona/, "account/setup flow should expose functional Arizona Early Access and manual campus selection");
 assert.doesNotMatch(shellRenderer + profileRenderer, /Sign in with Apple|Apple sign-in/i, "nonfunctional Apple Sign-In must not appear");
@@ -351,6 +369,7 @@ assert.match(renderDetailHtml({ ...detailBase, canManageVenue: true }), /Manage 
 assert.match(renderDetailHtml(detailBase), /tabs2 tabs2/, "detail should center a balanced two-tab Live and Deals control without an event");
 assert.doesNotMatch(renderDetailHtml(detailBase), />Events</, "detail should hide Events when there is no current event");
 assert.match(renderDetailHtml({ ...detailBase, bar: { ...detailBase.bar, event: "Live music tonight" } }), /tabs2 tabs3[\s\S]*>Events</, "detail should add a balanced Events tab only for a current event");
+assert.doesNotMatch(renderDetailHtml(detailBase), /detailDecision|Calm tonight|Busy tonight|Worth checking/, "detail should not repeat the hero in a decision summary strip");
 const activityHtml = renderDetailPanel(detailBase.bar, [], {
   detailTab: "live",
   deals: [],
@@ -370,6 +389,30 @@ const tonightReports = filterCurrentNightReports([
   { id: "late", created_at: "2026-06-23T08:30:00.000Z" },
 ], phoenixAfterMidnight);
 assert.deepEqual(tonightReports.map((report) => report.id), ["late"], "current-night report filtering should exclude prior-night history without deleting it");
+
+let notificationRequests = 0;
+const notificationApi = {
+  permission: "default",
+  requestPermission() { notificationRequests += 1; this.permission = "denied"; return Promise.resolve("denied"); },
+};
+let locationCaptures = 0;
+const permissionController = createPermissionController({
+  notificationRef: () => notificationApi,
+  navigatorRef: () => ({ geolocation: {}, permissions: { query: () => Promise.resolve({ state: "prompt" }) } }),
+  captureLocation: () => { locationCaptures += 1; return Promise.resolve(null); },
+  hasConfirmedLocation: () => false,
+});
+assert.equal(permissionController.readNotificationStatus(), "default", "reading notification status must not trigger a prompt");
+assert.equal(notificationRequests, 0, "notification education must not request permission before the enable action");
+assert.equal(await permissionController.requestNotifications(), "denied", "notification result should reflect the browser result");
+assert.equal(notificationRequests, 1, "notification prompt should run exactly once after explicit enable");
+assert.equal(await permissionController.readLocationStatus(), "prompt", "location status should preserve browser prompt/not-decided state");
+assert.equal(locationCaptures, 0, "reading location status must not call geolocation");
+assert.equal(await permissionController.requestLocation(), "prompt", "failed geolocation should fall back to the real browser permission state");
+assert.equal(locationCaptures, 1, "location should be requested only through the explicit enable action");
+const unavailablePermissions = createPermissionController({ notificationRef: () => null, navigatorRef: () => ({}) });
+assert.equal(unavailablePermissions.readNotificationStatus(), "unavailable", "unsupported notifications should be conservative");
+assert.equal(await unavailablePermissions.readLocationStatus(), "unavailable", "unsupported location should be conservative");
 
 calls = [];
 const reportController = createReportController({

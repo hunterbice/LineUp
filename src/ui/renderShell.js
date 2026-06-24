@@ -1,17 +1,5 @@
 import { esc } from "../utils/dom.js";
-
-// Photo upload UI: hidden file input + custom "Choose from Library" button + preview.
-// Native rebuild note: the future Swift app should use a native PhotosPicker instead of
-// an <input type="file"> — this web picker is the product reference, not the native impl.
-function photoIcon() {
-  return '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l1.6-2h6.8L23 8"/><path d="M4 8h16v11H4z"/><circle cx="12" cy="13" r="3.1"/></svg>';
-}
-
-export function renderPhotoPicker(prefix, photoImg) {
-  const hasPhoto = !!photoImg;
-  const inputId = prefix + "PhotoInput";
-  return `<div class="photoPicker"><div class="photoPickerPreview${hasPhoto ? " hasPhoto" : ""}" id="${prefix}PhotoPreview" aria-hidden="true">${hasPhoto ? photoImg : photoIcon()}</div><div class="photoPickerActions"><button type="button" class="secondaryBtn photoPickerBtn" onclick="document.getElementById('${inputId}').click()">${hasPhoto ? "Change Photo" : "Choose from Library"}</button>${hasPhoto ? `<button type="button" class="linkBtn photoRemoveBtn" onclick="clearAvatar()">Remove</button>` : ""}<small>LineUp resizes large photos before saving.</small></div><input type="file" id="${inputId}" class="visuallyHidden" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" aria-label="Choose profile photo" onchange="handleAvatarFile(this)"></div>`;
-}
+import { renderAvatarEditor } from "./renderProfilePhoto.js";
 
 function passwordEye() {
   return '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="2.5"/></svg>';
@@ -38,7 +26,36 @@ export function renderAccountGateHtml() {
   </section>`;
 }
 
-export function renderSetupGateHtml({ mode, avatarHtml, displayName, photoImg }) {
-  const bigAvatar = avatarHtml ? `<div class="profileMark setupAvatar">${avatarHtml}</div>` : "";
-  return `<section class="accountGate setupGate">${bigAvatar}<span class="earlyAccessPill">EARLY ACCESS</span><h1>Set Up LineUp</h1><p>Confirm your campus and choose how you appear. You’re ready for fall in a few taps.</p><label class="fieldLabel">Campus</label><select class="field" id="setupCampus"><option value="university_of_arizona">University of Arizona</option></select><p class="rewardFine">Campus selection lets you use LineUp without location permission.</p><label class="fieldLabel">Profile photo</label>${renderPhotoPicker("setup", photoImg)}<label class="fieldLabel" for="setupName">Display name</label><input class="field" id="setupName" maxlength="32" value="${esc(displayName || "")}" placeholder="Display name"><label class="fieldLabel">Public mode</label><div class="identityToggle"><button class="${mode === "anonymous" ? "on" : ""}" onclick="setInteractionVisibility('anonymous')">Anonymous</button><button class="${mode === "public" ? "on" : ""}" onclick="setInteractionVisibility('public')">Public</button></div><p class="rewardFine">Anonymous Mode shows structured reports as “Anonymous User.” LineUp still links activity to your account for moderation and safety.</p><div class="sheetActions"><button class="secondaryBtn" onclick="requestNotifications()">Notifications</button><button class="secondaryBtn" onclick="requestSetupLocation()">Use Location</button></div><button class="submit" onclick="saveSetup()">Join Arizona Early Access</button><p class="rewardFine">Location and notifications are optional. You can browse by campus and change permissions later.</p></section>`;
+export function renderSetupGateHtml({ mode, displayName, avatarUrl }) {
+  return `<section class="accountGate setupGate"><span class="earlyAccessPill">EARLY ACCESS</span><h1>Set Up LineUp</h1><p>Confirm your campus and choose how you appear. You’re ready for fall in a few taps.</p><label class="fieldLabel">Profile photo</label>${renderAvatarEditor("setup", avatarUrl)}<p class="rewardFine photoOptional">Optional. You can add or change this later.</p><label class="fieldLabel">Campus</label><select class="field" id="setupCampus"><option value="university_of_arizona">University of Arizona</option></select><p class="rewardFine">Campus selection lets you use LineUp without location permission.</p><label class="fieldLabel" for="setupName">Display name</label><input class="field" id="setupName" maxlength="32" value="${esc(displayName || "")}" placeholder="Display name"><label class="fieldLabel">Public mode</label><div class="identityToggle"><button class="${mode === "anonymous" ? "on" : ""}" onclick="setInteractionVisibility('anonymous')">Anonymous</button><button class="${mode === "public" ? "on" : ""}" onclick="setInteractionVisibility('public')">Public</button></div><p class="rewardFine">Anonymous Mode shows structured reports as “Anonymous User.” LineUp still links activity to your account for moderation and safety.</p><button class="submit" onclick="saveSetup()">Join Arizona Early Access</button><p class="rewardFine">Notifications and location are optional. LineUp will explain each one next.</p></section>`;
+}
+
+function permissionResult(status) {
+  const labels = {
+    granted: ["Enabled", "Permission confirmed by this device."],
+    denied: ["Not enabled", "You can change this later in device settings."],
+    default: ["Not decided", "LineUp will continue without notifications."],
+    prompt: ["Not decided", "LineUp will continue without location."],
+    unavailable: ["Unavailable", "This browser does not offer this permission."],
+    unknown: ["Not confirmed", "Check device settings if you want to enable it later."],
+  };
+  const value = labels[status] || labels.unknown;
+  return `<div class="permissionResult result-${esc(status || "unknown")}"><b>${value[0]}</b><span>${value[1]}</span></div>`;
+}
+
+export function renderPermissionEducationHtml({ step = "notifications", status = "default", attempted = false, busy = false } = {}) {
+  const notification = step === "notifications";
+  const title = notification ? "Stay in the loop" : "Make nearby reads better";
+  const copy = notification
+    ? "Get saved venue updates, new deals, launch news, and important LineUp alerts. Notifications are optional."
+    : "Location helps with nearby venues, verified check-ins, reports, and campus relevance while LineUp is open. Location is optional.";
+  const enableLabel = notification ? "Enable Notifications" : "Enable Location";
+  const stepLabel = notification ? "STEP 1 OF 2" : "STEP 2 OF 2";
+  const icon = notification
+    ? '<svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M10 21h4"/></svg>'
+    : '<svg viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 21s7-6.1 7-11a7 7 0 0 0-14 0c0 4.9 7 11 7 11z"/><circle cx="12" cy="10" r="2.4"/></svg>';
+  const actions = attempted
+    ? `<button class="submit" onclick="continuePermissionEducation('${step}')">${notification ? "Continue" : "Enter LineUp"}</button>`
+    : `<button class="submit" ${busy ? "disabled" : ""} onclick="enableSetupPermission('${step}')">${busy ? "Checking…" : enableLabel}</button><button class="permissionSkip" type="button" ${busy ? "disabled" : ""} onclick="skipSetupPermission('${step}')">Not Now</button>`;
+  return `<section class="accountGate permissionGate" data-permission-step="${step}"><span class="earlyAccessPill">${stepLabel}</span><div class="permissionHeroIcon">${icon}</div><h1>${title}</h1><p>${copy}</p>${attempted ? permissionResult(status) : ""}<div class="permissionActions">${actions}</div><p class="rewardFine">You can change this later from Profile → Preferences.</p></section>`;
 }

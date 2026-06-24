@@ -45,13 +45,13 @@ if (!/CACHE_NAME\s*=\s*"lineup-pwa-v\d+"/.test(sw)) throw new Error("Service wor
 const appVersion = configJs.match(/APP_VERSION\s*=\s*"([^"]+)"/)?.[1];
 const swVersion = sw.match(/CACHE_NAME\s*=\s*"lineup-pwa-(v\d+)"/)?.[1];
 if (!appVersion || !swVersion || appVersion !== swVersion) throw new Error(`APP_VERSION (${appVersion}) must match service worker (${swVersion})`);
-if (appVersion !== "v74") throw new Error(`APP_VERSION should be v74, found ${appVersion}`);
+if (appVersion !== "v75") throw new Error(`APP_VERSION should be v75, found ${appVersion}`);
 if (!/offline\.html/.test(sw)) throw new Error("Service worker offline fallback missing");
 if (publicSw !== null && publicSw !== sw) throw new Error("public/sw.js must match root sw.js because Vite deploys the public copy");
 if (!/url\.pathname\.endsWith\("\.js"\)/.test(sw) || !/url\.pathname\.endsWith\("\.css"\)/.test(sw)) throw new Error("Service worker should network-refresh JS/CSS chunks after deploy");
 
-if (!/href="\/icons\/favicon-32\.png\?v=74"/.test(html)) throw new Error("favicon link should use the v74 LineUp icon asset");
-if (!/href="\/icons\/apple-touch-icon\.png\?v=74"/.test(html)) throw new Error("apple-touch-icon link should use the v74 LineUp icon asset");
+if (!/href="\/icons\/favicon-32\.png\?v=75"/.test(html)) throw new Error("favicon link should use the v75 LineUp icon asset");
+if (!/href="\/icons\/apple-touch-icon\.png\?v=75"/.test(html)) throw new Error("apple-touch-icon link should use the v75 LineUp icon asset");
 if (!/data-theme="light"/.test(html) || /data-theme="dark"/.test(html)) throw new Error("app shell should default to light mode");
 if (!/<meta name="theme-color" content="#F5F7FB">/.test(html) || !/<meta name="color-scheme" content="light">/.test(html)) throw new Error("app shell metadata should use the light theme");
 if (manifest.theme_color !== "#F5F7FB" || manifest.background_color !== "#F5F7FB") throw new Error("root manifest should use the light app shell colors");

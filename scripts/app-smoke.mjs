@@ -177,6 +177,27 @@ async function main() {
     const earlyAccessState = { joined: false, joined_at: null, campus_slug: "university_of_arizona", requested_venue_ids: [] };
     await page.addInitScript((deals) => {
       window.LINEUP_TEST_DEALS = deals;
+      window.__permissionCalls = { notifications: 0, location: 0 };
+      window.__geoPermissionState = "prompt";
+      const notificationApi = {
+        permission: "default",
+        requestPermission() {
+          window.__permissionCalls.notifications += 1;
+          notificationApi.permission = "denied";
+          return Promise.resolve("denied");
+        },
+      };
+      Object.defineProperty(window, "Notification", { configurable: true, value: notificationApi });
+      Object.defineProperty(navigator, "permissions", { configurable: true, value: { query: () => Promise.resolve({ state: window.__geoPermissionState }) } });
+      Object.defineProperty(navigator, "geolocation", { configurable: true, value: {
+        getCurrentPosition(success) {
+          window.__permissionCalls.location += 1;
+          window.__geoPermissionState = "granted";
+          success({ coords: { latitude: 32.2319, longitude: -110.9501, accuracy: 12 } });
+        },
+        watchPosition() { return 1; },
+        clearWatch() {},
+      } });
     }, smokeDeals);
     await page.route("**/*venue_deals*", async (route) => {
       if (route.request().method() === "GET") {
@@ -190,6 +211,9 @@ async function main() {
     });
     await page.route("**/functions/v1/venue-analytics-ingest", async (route) => {
       await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ accepted: true }) });
+    });
+    await page.route("**/functions/v1/location-ingest", async (route) => {
+      await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true, nearest_venue_id: "bens", nearest_venue_name: "Gentle Ben’s", nearest_distance_m: 20, area: "main_gate" }) });
     });
     await page.route("**/functions/v1/early-access", async (route) => {
       const payload = route.request().postDataJSON() || {};
@@ -228,25 +252,47 @@ async function main() {
     await page.waitForSelector(".setupGate");
     await page.locator("#setupCampus").waitFor();
     if (await page.locator(".setupGate", { hasText: "favorite bars" }).count()) throw new Error("Setup should not ask users to select favorite bars");
+    if (await page.locator(".setupGate button", { hasText: "Notifications" }).count() || await page.locator(".setupGate button", { hasText: "Use Location" }).count()) throw new Error("Core setup should not contain direct permission buttons");
+    await page.waitForSelector(".setupGate .avatarCircle:not(.hasPhoto)");
+    await page.locator(".setupGate .avatarCamera").click();
+    await page.waitForSelector("#reportSheet.open .photoActionSheet");
+    await page.locator(".photoSheetAction", { hasText: "Take Photo" }).waitFor();
+    await page.locator(".photoSheetAction", { hasText: "Choose from Library" }).waitFor();
+    if (await page.locator(".photoSheetAction", { hasText: "Remove Current Photo" }).count()) throw new Error("Photo removal should be hidden before a photo exists");
+    if (await page.locator("#photoCameraInput").getAttribute("capture") !== "environment") throw new Error("Take Photo should use the camera capture path where supported");
     await page.evaluate(async () => {
       const canvas = document.createElement("canvas");
       canvas.width = 1800;
       canvas.height = 1400;
       const context = canvas.getContext("2d");
       context.fillStyle = "#2563EB";
-      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.fillRect(0, 0, canvas.width / 2, canvas.height);
+      context.fillStyle = "#DC2626";
+      context.fillRect(canvas.width / 2, 0, canvas.width / 2, canvas.height);
       const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
-      const input = document.querySelector("#setupPhotoInput");
+      const input = document.querySelector("#photoLibraryInput");
       const transfer = new DataTransfer();
       transfer.items.add(new File([blob], "large-profile.png", { type: "image/png" }));
       Object.defineProperty(input, "files", { configurable: true, value: transfer.files });
       input.dispatchEvent(new Event("change", { bubbles: true }));
     });
-    await page.waitForSelector("#setupPhotoPreview.hasPhoto");
-    const processedPhoto = await page.locator("#setupPhotoPreview img").getAttribute("src");
+    await page.waitForSelector("#photoCropCanvas");
+    const cropBefore = await page.locator("#photoCropCanvas").evaluate((canvas) => canvas.toDataURL("image/jpeg", 0.84));
+    await page.locator("#photoCropCanvas").press("ArrowRight");
+    const cropAfter = await page.locator("#photoCropCanvas").evaluate((canvas) => canvas.toDataURL("image/jpeg", 0.84));
+    if (cropBefore === cropAfter) throw new Error("Crop-position controls should change the saved composition");
+    await page.locator("#saveCroppedPhoto").click();
+    await page.waitForSelector(".setupGate .avatarCircle.hasPhoto img");
+    const processedPhoto = await page.locator(".setupGate .avatarCircle img").getAttribute("src");
     if (!processedPhoto?.startsWith("data:image/jpeg") || processedPhoto.length >= 220000) throw new Error("Large profile photo should be resized and compressed before save");
     await page.locator("#setupName").fill("Smoke Test");
     await page.locator(".setupGate button", { hasText: "Join Arizona Early Access" }).click();
+    await page.waitForSelector('.permissionGate[data-permission-step="notifications"]');
+    if (await page.evaluate(() => window.__permissionCalls.notifications) !== 0) throw new Error("Notification prompt must not run before Enable Notifications");
+    await page.locator(".permissionGate .permissionSkip", { hasText: "Not Now" }).click();
+    await page.waitForSelector('.permissionGate[data-permission-step="location"]');
+    if (await page.evaluate(() => window.__permissionCalls.location) !== 0) throw new Error("Location prompt must not run before Enable Location");
+    await page.locator(".permissionGate .permissionSkip", { hasText: "Not Now" }).click();
     await page.waitForSelector("#livePage.active");
     await page.waitForFunction(() => window.scrollY <= 1);
     if (await page.locator("body", { hasText: "Add to Home Screen" }).count() || await page.locator("body", { hasText: "Install LineUp" }).count()) throw new Error("Student UI must not expose install promotion");
@@ -297,6 +343,8 @@ async function main() {
     await page.locator(".barcard").first().click();
     await page.waitForSelector("#detail.open");
     await page.waitForSelector(".tabs2 button.on", { hasText: "Live" });
+    if (await page.locator("#detail .detailDecision").count() || await page.locator("#detail", { hasText: "Calm tonight" }).count()) throw new Error("Venue detail should not repeat the hero in a decision summary strip");
+    await page.locator("#detail .heroStat").waitFor();
     await page.locator(".tabs2 button", { hasText: "Deals" }).click();
     await page.waitForSelector(".tabs2 button.on", { hasText: "Deals" });
     const detailTabCount = await page.locator(".tabs2 button").count();
@@ -339,6 +387,24 @@ async function main() {
     await page.locator(".profileMenuItem", { hasText: "Privacy Policy" }).waitFor();
     await page.locator(".profileMenuItem", { hasText: "Terms of Use" }).waitFor();
     await page.locator(".profileMenuItem", { hasText: "Help / Support" }).waitFor();
+    await page.locator(".profileMenuItem", { hasText: "Preferences" }).click();
+    await page.locator("button", { hasText: "Review Notification Access" }).click();
+    await page.waitForSelector('.permissionGate[data-permission-step="notifications"]');
+    await page.locator(".permissionGate .submit", { hasText: "Enable Notifications" }).click();
+    await page.locator(".permissionResult", { hasText: "Not enabled" }).waitFor();
+    if (await page.evaluate(() => window.__permissionCalls.notifications) !== 1) throw new Error("Explicit notification enable should call the real API exactly once");
+    await page.locator(".permissionGate .submit", { hasText: "Continue" }).click();
+    await page.waitForSelector('.permissionGate[data-permission-step="location"]');
+    await page.locator(".permissionGate .submit", { hasText: "Enable Location" }).click();
+    await page.locator(".permissionResult", { hasText: "Enabled" }).waitFor();
+    if (await page.evaluate(() => window.__permissionCalls.location) !== 1) throw new Error("Explicit location enable should call geolocation exactly once");
+    await page.locator(".permissionGate .submit", { hasText: "Enter LineUp" }).click();
+    await page.waitForSelector("#livePage.active .barcard");
+    await page.locator(".navbtn[data-page='profilePage']").click();
+    await page.locator(".profileMenuItem", { hasText: "Preferences" }).click();
+    await page.locator(".permission", { hasText: "Notifications" }).locator(".locationStatus", { hasText: "Denied" }).waitFor();
+    await page.locator(".permission", { hasText: "Location" }).locator(".locationStatus", { hasText: "Enabled" }).waitFor();
+    await page.locator(".backBtn", { hasText: "Profile" }).click();
     // Anonymous users no longer get a large "A" avatar (items 6/19), so .profileMark
     // only exists when a public photo is set. Guard the hidden-owner-access check.
     const profileMark = page.locator(".profileMark");
