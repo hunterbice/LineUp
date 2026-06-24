@@ -15,6 +15,9 @@ function writeJson(key, value) {
 export function clearLegacyVenueOverrides() {
   localStorage.removeItem("lineup_bar_updates");
   localStorage.removeItem("lineup_local_reports");
+  localStorage.removeItem("lineup_pwa_installed");
+  localStorage.removeItem("lineup_install_prompt_completed");
+  localStorage.removeItem("lineup_install_prompt_dismissed_at");
 }
 
 export function clearAuthState() { localStorage.removeItem("lineup_auth_state"); }
@@ -46,17 +49,6 @@ export function setArea(value) { localStorage.setItem("lineup_area", value); ret
 
 export function getMapboxTokenOverride() { return localStorage.getItem("lineup_mapbox_token") || ""; }
 export function isDeviceSessionEnabled() { return localStorage.getItem("lineup_device_session_enabled") !== "false"; }
-
-export function getInstallPromptState() {
-  return {
-    installed: localStorage.getItem("lineup_pwa_installed") === "true",
-    completed: localStorage.getItem("lineup_install_prompt_completed") === "true",
-    dismissedAt: Number(localStorage.getItem("lineup_install_prompt_dismissed_at") || 0),
-  };
-}
-export function markPwaInstalled() { localStorage.setItem("lineup_pwa_installed", "true"); }
-export function markInstallPromptCompleted() { localStorage.setItem("lineup_install_prompt_completed", "true"); }
-export function markInstallPromptDismissed(at = Date.now()) { localStorage.setItem("lineup_install_prompt_dismissed_at", String(at)); }
 
 export function getDeviceSession() { return readJson("lineup_device_session", null); }
 export function setDeviceSession(value) { return writeJson("lineup_device_session", value); }

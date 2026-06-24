@@ -155,7 +155,7 @@ export function createDealController(deps) {
     } catch (error) {
       if (deps.logError) deps.logError("deal_tap_analytics_failed", error);
     }
-    deps.openDetail(deal.venueId, { source: source, dealId: deal.id, focusDeal: true });
+    deps.openDetail(deal.venueId, { source: source, dealId: deal.id, focusDeal: true, initialTab: "deals" });
   }
 
   function saveFromForm(venueId, prefix) {

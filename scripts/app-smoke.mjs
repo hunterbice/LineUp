@@ -38,6 +38,65 @@ function waitForServer() {
   });
 }
 
+async function probePullGesture(page, surfaceSelector) {
+  const state = await page.evaluate((selector) => {
+    window.scrollTo(0, 0);
+    const detail = document.querySelector("#detail");
+    if (detail?.classList.contains("open")) detail.scrollTop = 0;
+    const touch = (type, y, touches = true) => {
+      const point = new Touch({ identifier: 1, target: document.body, clientX: 190, clientY: y, pageX: 190, pageY: y, screenX: 190, screenY: y });
+      return window.dispatchEvent(new TouchEvent(type, {
+        bubbles: true,
+        cancelable: true,
+        touches: touches ? [point] : [],
+        targetTouches: touches ? [point] : [],
+        changedTouches: [point],
+      }));
+    };
+    touch("touchstart", 20);
+    touch("touchmove", 100);
+    const surface = document.querySelector(selector);
+    const indicator = document.querySelector(".ptr");
+    const during = {
+      offset: surface?.style.getPropertyValue("--pull-distance") || "",
+      label: indicator?.textContent?.trim(),
+      visible: indicator?.classList.contains("visible"),
+    };
+    touch("touchend", 100, false);
+    return during;
+  }, surfaceSelector);
+  if (!state.visible || !parseFloat(state.offset) || !/Pull to refresh/.test(state.label || "")) {
+    throw new Error(`Pull-to-refresh should move ${surfaceSelector} and reveal its indicator: ${JSON.stringify(state)}`);
+  }
+  await page.waitForFunction((selector) => !document.body.dataset.pullGesture && parseFloat(document.querySelector(selector)?.style.getPropertyValue("--pull-distance") || "0") === 0, surfaceSelector);
+}
+
+async function probeRefreshGesture(page, surfaceSelector) {
+  const state = await page.evaluate((selector) => {
+    window.scrollTo(0, 0);
+    const detail = document.querySelector("#detail");
+    if (detail?.classList.contains("open")) detail.scrollTop = 0;
+    const touch = (type, y, touches = true) => {
+      const point = new Touch({ identifier: 2, target: document.body, clientX: 190, clientY: y, pageX: 190, pageY: y, screenX: 190, screenY: y });
+      window.dispatchEvent(new TouchEvent(type, { bubbles: true, cancelable: true, touches: touches ? [point] : [], targetTouches: touches ? [point] : [], changedTouches: [point] }));
+    };
+    touch("touchstart", 20);
+    touch("touchmove", 180);
+    const indicator = document.querySelector(".ptr");
+    const releaseLabel = indicator?.textContent?.trim() || "";
+    touch("touchend", 180, false);
+    return {
+      releaseLabel,
+      refreshing: document.body.dataset.pullRefreshing === "true",
+      heldOffset: document.querySelector(selector)?.style.getPropertyValue("--pull-distance") || "",
+    };
+  }, surfaceSelector);
+  if (!/Release to refresh/.test(state.releaseLabel) || !state.refreshing || parseFloat(state.heldOffset) < 50) {
+    throw new Error(`Threshold pull should start and hold backend refresh on ${surfaceSelector}: ${JSON.stringify(state)}`);
+  }
+  await page.waitForFunction((selector) => !document.body.dataset.pullRefreshing && parseFloat(document.querySelector(selector)?.style.getPropertyValue("--pull-distance") || "0") === 0, surfaceSelector);
+}
+
 async function main() {
   let browser;
   await waitForServer();
@@ -149,16 +208,48 @@ async function main() {
     await page.goto(baseUrl, { waitUntil: "networkidle" });
     await page.waitForSelector(".accountGate");
     const stamp = `${Date.now()}${Math.round(Math.random() * 10000)}`;
-    await page.locator("#authEmail").fill(`smoke-${stamp}@get-lineup.app`);
+    const smokeEmail = `smoke-${stamp}@get-lineup.app`;
+    await page.locator("#authEmail").fill(smokeEmail);
     await page.locator("#authPassword").fill("lineup-smoke-1");
+    await page.locator(".passwordToggle").click();
+    if (await page.locator("#authPassword").getAttribute("type") !== "text") throw new Error("Password toggle should reveal the sign-in password");
+    if (await page.locator(".passwordToggle").getAttribute("aria-label") !== "Hide password") throw new Error("Password toggle should expose its changed accessible label");
+    await page.locator(".passwordToggle").click();
     await page.locator(".authToggle label", { hasText: "Create account" }).click();
+    await page.waitForTimeout(200);
+    if (await page.locator("#authEmail").inputValue() !== smokeEmail) throw new Error("Switching to registration should preserve typed email");
+    if (await page.locator("#authPassword").getAttribute("autocomplete") !== "new-password") throw new Error("Create-account mode should use the new-password autofill contract");
+    if (!await page.locator(".accountGate").count()) throw new Error("Registration typing should not bounce back to a different auth screen");
+    await page.locator(".passwordToggle").click();
+    if (await page.locator("#authPassword").getAttribute("type") !== "text") throw new Error("Password toggle should work in create-account mode");
+    await page.locator(".passwordToggle").click();
     await page.locator("#authName").fill("Smoke Test");
     await page.locator(".accountGate button", { hasText: "Join Early Access" }).click();
     await page.waitForSelector(".setupGate");
     await page.locator("#setupCampus").waitFor();
+    if (await page.locator(".setupGate", { hasText: "favorite bars" }).count()) throw new Error("Setup should not ask users to select favorite bars");
+    await page.evaluate(async () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 1800;
+      canvas.height = 1400;
+      const context = canvas.getContext("2d");
+      context.fillStyle = "#2563EB";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+      const input = document.querySelector("#setupPhotoInput");
+      const transfer = new DataTransfer();
+      transfer.items.add(new File([blob], "large-profile.png", { type: "image/png" }));
+      Object.defineProperty(input, "files", { configurable: true, value: transfer.files });
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await page.waitForSelector("#setupPhotoPreview.hasPhoto");
+    const processedPhoto = await page.locator("#setupPhotoPreview img").getAttribute("src");
+    if (!processedPhoto?.startsWith("data:image/jpeg") || processedPhoto.length >= 220000) throw new Error("Large profile photo should be resized and compressed before save");
     await page.locator("#setupName").fill("Smoke Test");
     await page.locator(".setupGate button", { hasText: "Join Arizona Early Access" }).click();
     await page.waitForSelector("#livePage.active");
+    await page.waitForFunction(() => window.scrollY <= 1);
+    if (await page.locator("body", { hasText: "Add to Home Screen" }).count() || await page.locator("body", { hasText: "Install LineUp" }).count()) throw new Error("Student UI must not expose install promotion");
     await page.locator(".earlyAccessBanner", { hasText: "Build your fall lineup" }).waitFor();
     await page.waitForSelector(".barcard .statusline");
     const lightMode = await page.evaluate(() => {
@@ -178,6 +269,7 @@ async function main() {
     });
     if (!lightMode.bodyLight || !lightMode.cardLight || !lightMode.navLight) throw new Error(`Expected light runtime surfaces: ${JSON.stringify(lightMode)}`);
     if (!lightMode.noOverflow) throw new Error("Light mode should not introduce horizontal overflow at 390px");
+    await probePullGesture(page, "#app");
     if (await page.locator("#livePage .dealCard").count()) throw new Error("Live should not reuse full deal cards");
     await page.locator(".dealBadge", { hasText: "No cover before 10" }).waitFor();
     if (await page.locator("text=Expired smoke deal").count()) throw new Error("Expired deals should not render");
@@ -204,14 +296,11 @@ async function main() {
     await page.locator(".sectionlabel", { hasText: "Recently checked" }).waitFor();
     await page.locator(".barcard").first().click();
     await page.waitForSelector("#detail.open");
+    await page.waitForSelector(".tabs2 button.on", { hasText: "Live" });
     await page.locator(".tabs2 button", { hasText: "Deals" }).click();
     await page.waitForSelector(".tabs2 button.on", { hasText: "Deals" });
-    // Events tab only renders when the venue has an event tonight (item 11).
-    const detailEventsTab = page.locator(".tabs2 button", { hasText: "Events" });
-    if (await detailEventsTab.count()) {
-      await detailEventsTab.click();
-      await page.waitForSelector(".tabs2 button.on", { hasText: "Events" });
-    }
+    const detailTabCount = await page.locator(".tabs2 button").count();
+    if (detailTabCount < 2 || detailTabCount > 3) throw new Error("Venue subnav should contain balanced Live/Deals and optional current Events");
     await page.locator(".cta", { hasText: "Report" }).click();
     await page.waitForSelector("#reportSheet.open");
     const busyReportButton = page.locator("#reportSheet .choicegrid").first().locator("button", { hasText: "BUSY" });
@@ -231,6 +320,7 @@ async function main() {
     await page.waitForSelector("#highlightsPage.active");
     await page.locator(".navbtn[data-page='highlightsPage']", { hasText: "Deals" }).waitFor();
     await page.locator("#highlightsPage", { hasText: "Active deals right now" }).waitFor();
+    await probeRefreshGesture(page, "#app");
     await page.locator("#highlightsPage .dealCard", { hasText: "Promoted" }).waitFor();
     if (await page.locator("body", { hasText: "Pulse" }).count()) throw new Error("Pulse should not appear in user-facing UI");
     if (await page.locator("text=Expired smoke deal").count()) throw new Error("Expired deals should not render");
@@ -238,8 +328,10 @@ async function main() {
     if (await page.locator("text=Inactive smoke deal").count()) throw new Error("Inactive deals should not render");
     await page.locator("#highlightsPage .dealCard").first().click();
     await page.waitForSelector("#detail.open");
+    await page.waitForSelector(".tabs2 button.on", { hasText: "Deals" });
     await page.locator("#activeDealSection .dealDetailCard", { hasText: "No cover before 10" }).waitFor();
     await page.waitForFunction(() => document.activeElement?.id === "activeDealSection");
+    await probePullGesture(page, ".detailStage");
     await page.locator("button[onclick='closeDetail()']").click();
     await page.waitForSelector("#detail:not(.open)");
     await page.locator(".navbtn[data-page='profilePage']").click();

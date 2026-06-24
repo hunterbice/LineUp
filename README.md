@@ -2,7 +2,7 @@
 
 **Know Before You Go.**
 
-LineUp is a mobile-first Progressive Web App for University of Arizona nightlife. It shows live crowd status, estimated line wait, closing times, momentum trends, venue events, and LineLeap jump links — all in a dark, branded interface built for iPhone Safari.
+LineUp is the web product reference for a future native University of Arizona nightlife app. It presents backend-confirmed crowd status, estimated line waits, current deals, and venue details in a clean mobile interface. The web build remains deployable for product validation, but install prompts and Add to Home Screen promotion are intentionally absent.
 
 Live at: [get-lineup.app](https://get-lineup.app)
 
@@ -12,10 +12,9 @@ Live at: [get-lineup.app](https://get-lineup.app)
 
 - **Live tab** — real-time crowd level (QUIET / SLOW / BUSY / PACKED), line wait, and confidence signal for every active venue
 - **University / Downtown tabs** — two area views covering Main Gate and 4th Ave / Congress
-- **Detail sheet** — swipe between venues, view full stats, mini Intel row, crowd chart, recent reports, and CTA buttons (Directions, LineLeap, Report)
-- **Pulse Planner** — vibe-based venue recommendations using live crowd + scene scoring
+- **Venue detail** — view backend-confirmed live activity, current-night reports, active deals, hours, directions, check-in, and reporting actions
+- **Deals** — deal-first active venue specials with direct navigation to the venue's Deals view
 - **Map** — draggable pin map with geofence and color-coded crowd indicators
-- **Night Intel** — timing guidance, signal strength, and best move summary
 - **Favorites** — pin bars to the top of the live list
 - **Swipe navigation** — swipe left/right to move between venues inside a detail sheet; swipe down to close
 - **Offline shell** — service worker app-shell caching keeps the web preview usable offline
@@ -27,11 +26,11 @@ Live at: [get-lineup.app](https://get-lineup.app)
 
 | Token | Value |
 |---|---|
-| Background | `#07080B` (Midnight Signal) |
-| Brand teal | `#12E0C4` |
-| Brand glow | `rgba(18,224,196,.28)` |
-| Busy | `#FFB23F` |
-| Packed | `#FF4F7B` |
+| Background | `#F5F7FB` |
+| Brand blue | `#2563EB` |
+| Brand glow | `rgba(37,99,235,.18)` |
+| Busy | `#D97706` |
+| Packed | `#DC2626` |
 
 ---
 
@@ -39,9 +38,9 @@ Live at: [get-lineup.app](https://get-lineup.app)
 
 | File | Role |
 |---|---|
-| `assets/LineUp_Header_Wordmark_2x.png` | Transparent wordmark — app header, install prompt, splash (flat version) |
+| `assets/LineUp_Header_Wordmark_2x.png` | Transparent wordmark — app header and splash |
 | `assets/LineUp_Splash_Wordmark_2x.png` | 3D splash wordmark — loading screen only |
-| `icons/icon-192.png` | App icon — home screen, install prompt mini-brand |
+| `icons/icon-192.png` | Canonical app icon |
 | `icons/icon-512.png` | App icon — PWA manifest |
 | `icons/maskable-512.png` | Safe-zone maskable icon for Android |
 | `icons/apple-touch-icon.png` | iOS home screen icon |
@@ -264,6 +263,4 @@ Security status:
 |---|---|
 | `lineup_favorites` | Array of favorited venue IDs |
 | `lineup_area` | Last selected area (`main_gate` or `fourth_downtown`) |
-| `lineup_install_prompt_dismissed_at` | Timestamp of last "Remind me later" tap |
-| `lineup_install_prompt_completed` | Set to `"true"` when user completes install flow |
 | `lineup_pwa_installed` | Set to `"true"` when app is opened in standalone mode |

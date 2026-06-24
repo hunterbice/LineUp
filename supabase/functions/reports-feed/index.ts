@@ -6,6 +6,17 @@ function cleanText(value: unknown, max = 128) {
   return typeof value === "string" ? value.trim().slice(0, max) : "";
 }
 
+function currentTucsonNightStart(now = new Date()) {
+  const phoenixClock = new Date(now.getTime() - 7 * 60 * 60 * 1000);
+  const beforeBoundary = phoenixClock.getUTCHours() < 5;
+  return new Date(Date.UTC(
+    phoenixClock.getUTCFullYear(),
+    phoenixClock.getUTCMonth(),
+    phoenixClock.getUTCDate() - (beforeBoundary ? 1 : 0),
+    12,
+  ));
+}
+
 function publicAuthor(row: any, profile: any) {
   const context = row.report_context || {};
   const visibility = row.interaction_visibility === "public" ? "public" : "anonymous";
@@ -35,6 +46,8 @@ Deno.serve(async (req: Request) => {
     .select("id,user_id,venue_id,crowd_level,wait_minutes,note,photo_signal,location_verified,interaction_visibility,created_at,report_context")
     .eq("venue_id", venueId)
     .eq("source", "user_report")
+    .gte("created_at", currentTucsonNightStart().toISOString())
+    .lte("created_at", new Date(Date.now() + 5 * 60 * 1000).toISOString())
     .order("created_at", { ascending: false })
     .limit(20);
   if (error) return jsonResponse({ error: error.message }, 500, req);

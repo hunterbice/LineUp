@@ -10,7 +10,7 @@ import { createVenueStaffController } from "../src/controllers/venueStaffControl
 import { createEarlyAccessController } from "../src/controllers/earlyAccessController.js";
 import { venueAnalyticsTestHooks } from "../src/services/venueAnalyticsService.js";
 import { venueDealTestHooks } from "../src/services/venueDealService.js";
-import { renderDetailHtml, renderReportRows } from "../src/ui/renderBarDetail.js";
+import { renderDetailHtml, renderDetailPanel, renderReportRows } from "../src/ui/renderBarDetail.js";
 import { renderRetentionDashboard } from "../src/ui/renderDashboard.js";
 import { renderDealBadge, renderDealEditor, renderDealPerformance, renderVenueDealBlock } from "../src/ui/renderDeals.js";
 import { dealEndingCue, renderDealsPage } from "../src/ui/renderDealsPage.js";
@@ -19,6 +19,8 @@ import { renderOwnerDashboardHtml } from "../src/ui/renderOwnerDashboard.js";
 import { renderProfilePageHtml } from "../src/ui/renderProfile.js";
 import { renderReportSheetHtml } from "../src/ui/renderReportSheet.js";
 import { renderVenueControlsForBar } from "../src/ui/renderVenueControls.js";
+import { filterCurrentNightReports, nightlifeWindowStart } from "../src/utils/nightlife.js";
+import { PROFILE_IMAGE_MAX_DATA_URL_LENGTH, PROFILE_IMAGE_MAX_DIMENSION } from "../src/utils/profileImage.js";
 
 const root = process.cwd();
 const main = fs.readFileSync(path.join(root, "src/main.js"), "utf8");
@@ -42,6 +44,7 @@ const earlyAccessMigration = fs.readFileSync(path.join(root, "supabase/migration
 const reportSheetRenderer = fs.readFileSync(path.join(root, "src/ui/renderReportSheet.js"), "utf8");
 const locationIngest = fs.readFileSync(path.join(root, "supabase/functions/location-ingest/index.ts"), "utf8");
 const reportsFeed = fs.readFileSync(path.join(root, "supabase/functions/reports-feed/index.ts"), "utf8");
+const eventMigration = fs.readFileSync(path.join(root, "supabase/migrations/202606230002_current_night_events.sql"), "utf8");
 const legalPages = ["privacy", "terms", "support"].map((name) => fs.readFileSync(path.join(root, `public/legal/${name}.html`), "utf8")).join("\n");
 
 function ordered(source, patterns, label) {
@@ -55,6 +58,8 @@ function ordered(source, patterns, label) {
 
 assert.match(cacheState, /removeItem\("lineup_bar_updates"\)/, "legacy venue overrides must be cleared");
 assert.match(cacheState, /removeItem\("lineup_local_reports"\)/, "legacy local reports must be cleared");
+assert.match(cacheState, /removeItem\("lineup_install_prompt_completed"\)/, "retired install prompt state should be cleared on boot");
+assert.doesNotMatch(cacheState, /export function getInstallPromptState|export function markInstallPrompt/, "retired install prompt API should not remain callable");
 assert.match(cacheState, /lineup_recent_venues/, "recent venues should use a dedicated cache key");
 assert.match(cacheState, /venueId/, "recent venue cache should store venue IDs");
 assert.match(cacheState, /viewedAt/, "recent venue cache should store timestamps");
@@ -68,8 +73,8 @@ ordered(main, [/ownerAction\("venue_live_update"/, /loadSupabaseStatus\(\)/, /ow
 ordered(main, [/ownerAction\("set_venue_status"/, /loadSupabaseStatus\(\)/, /ownerRequest\(\)/], "owner status flow");
 assert.doesNotMatch(main, /Local update saved|saved locally/, "staff/report UI should not claim local mutation");
 assert.equal(sw, publicSw, "public service worker must match root service worker");
-assert.equal(config.match(/APP_VERSION\s*=\s*"([^"]+)"/)?.[1], "v73", "APP_VERSION should be v73");
-assert.match(sw, /lineup-pwa-v73/, "service worker should be v73");
+assert.equal(config.match(/APP_VERSION\s*=\s*"([^"]+)"/)?.[1], "v74", "APP_VERSION should be v74");
+assert.match(sw, /lineup-pwa-v74/, "service worker should be v74");
 assert.match(html, /data-page="highlightsPage"[^>]*aria-label="Deals"/, "main navigation should expose Deals");
 assert.doesNotMatch(html, />Pulse</, "main navigation must not expose the retired Pulse label");
 assert.match(html, /data-theme="light"/, "HTML should default to light mode");
@@ -85,6 +90,14 @@ assert.match(styles, /--card:#FFFFFF/, "app card token should be white");
 assert.match(styles, /--brand:#2563EB/, "brand token should use clean blue");
 assert.doesNotMatch(styles, /--(?:bg|surface|card|brand):(?:#12151B|#191D24|#1D222A|#63D7CC)/, "old dark and teal root tokens must not return");
 assert.doesNotMatch(main, /mapbox:\/\/styles\/mapbox\/dark-v11/, "maps should not use the dark style");
+assert.doesNotMatch(main + shellRenderer + profileRenderer, /Add to Home Screen|Install LineUp|beforeinstallprompt|maybeShowAfterSplash/, "student runtime must not retain install promotion behavior");
+assert.doesNotMatch(main, /function renderStats|NIGHT INTEL|Signal Profile/, "retired Intel and Signal Profile renderers must not remain reachable");
+assert.match(shellRenderer, /togglePasswordVisibility\('authPassword',this\)/, "auth password field should expose an accessible visibility toggle");
+assert.match(shellRenderer, /Choose from Library/, "profile setup should use a custom photo picker");
+assert.equal(PROFILE_IMAGE_MAX_DIMENSION, 768, "profile photos should be resized before upload");
+assert.ok(PROFILE_IMAGE_MAX_DATA_URL_LENGTH < 250000, "profile photo output should remain below backend preference limits");
+assert.match(reportsFeed, /\.gte\("created_at",\s*currentTucsonNightStart/, "reports feed should filter records at the current-night boundary");
+assert.match(eventMigration, /event_updated_at[\s\S]*interval '5 hours'/, "active event view should enforce a 5 AM Tucson nightlife boundary");
 assert.doesNotMatch(shellRenderer + profileRenderer + dealsPageRenderer, /coming soon|\bdemo\b/i, "public student copy should not expose unfinished or demo language");
 assert.match(shellRenderer, /Join Early Access[\s\S]*University of Arizona/, "account/setup flow should expose functional Arizona Early Access and manual campus selection");
 assert.doesNotMatch(shellRenderer + profileRenderer, /Sign in with Apple|Apple sign-in/i, "nonfunctional Apple Sign-In must not appear");
@@ -148,7 +161,7 @@ detailController.open("venue_1");
 assert.deepEqual(calls, ["set", "recent:venue_1", "track", "render", "open"], "detail open should save only the recent venue ID after venue validation");
 calls = [];
 detailController.open("venue_1", { focusDeal: true });
-assert.deepEqual(calls, ["set", "recent:venue_1", "track", "render", "open", "focusDeal"], "deal navigation should open normal detail and then focus its deal section");
+assert.deepEqual(calls, ["set", "recent:venue_1", "track", "render", "open", "focusDeal"], "deal navigation should open normal detail on Deals and then focus its deal section");
 
 const backendVenues = [{ id: "fresh", name: "Fresh backend venue", lvl: "busy" }, { id: "other", name: "Other venue", lvl: "slow" }];
 const hydrated = hydrateVenues([{ venueId: "missing", viewedAt: 1 }, { venueId: "other", viewedAt: 2 }], backendVenues);
@@ -223,7 +236,7 @@ const tapController = createDealController({
   logError() {},
 });
 tapController.handleDealTap(activeDeals[0], "deals_tab");
-assert.deepEqual(openedDeal, { venueId: "fresh", meta: { source: "deals_tab", dealId: "promoted", focusDeal: true } }, "analytics failure must not block Deals navigation or detail focus");
+assert.deepEqual(openedDeal, { venueId: "fresh", meta: { source: "deals_tab", dealId: "promoted", focusDeal: true, initialTab: "deals" } }, "analytics failure must not block Deals navigation or activate the wrong detail tab");
 const normalizedDealPayload = venueDealTestHooks.normalizePayload({
   venueId: "fresh",
   title: "A".repeat(120),
@@ -335,6 +348,28 @@ const detailBase = {
 };
 assert.doesNotMatch(renderDetailHtml(detailBase), /Manage Venue/, "normal student detail should not render venue management");
 assert.match(renderDetailHtml({ ...detailBase, canManageVenue: true }), /Manage Venue/, "authorized venue preview should include management return action");
+assert.match(renderDetailHtml(detailBase), /tabs2 tabs2/, "detail should center a balanced two-tab Live and Deals control without an event");
+assert.doesNotMatch(renderDetailHtml(detailBase), />Events</, "detail should hide Events when there is no current event");
+assert.match(renderDetailHtml({ ...detailBase, bar: { ...detailBase.bar, event: "Live music tonight" } }), /tabs2 tabs3[\s\S]*>Events</, "detail should add a balanced Events tab only for a current event");
+const activityHtml = renderDetailPanel(detailBase.bar, [], {
+  detailTab: "live",
+  deals: [],
+  signalState: detailBase.signalState,
+  confidenceBreakdown: () => "",
+  renderReportRows: () => "",
+});
+assert.equal((activityHtml.match(/class="activityMetric"/g) || []).length, 4, "Live Activity should use one consistent metric row for all four values");
+assert.match(activityHtml, /Estimated line wait[\s\S]*Recent reports[\s\S]*Read quality[\s\S]*Freshness/, "Live Activity metric order should remain predictable");
+const dealsDetailHtml = renderDetailPanel(detailBase.bar, [], { detailTab: "deals", deals: [activeDeals[0]], signalState: detailBase.signalState });
+assert.match(dealsDetailHtml, /id="activeDealSection"[\s\S]*No cover before 10/, "Deals detail tab should immediately render the selected venue's active deals");
+
+const phoenixAfterMidnight = new Date("2026-06-23T09:00:00.000Z"); // 2 AM Tucson
+assert.equal(nightlifeWindowStart(phoenixAfterMidnight).toISOString(), "2026-06-22T12:00:00.000Z", "2 AM reports should remain in the prior night's 5 AM window");
+const tonightReports = filterCurrentNightReports([
+  { id: "old", created_at: "2026-06-22T11:59:59.000Z" },
+  { id: "late", created_at: "2026-06-23T08:30:00.000Z" },
+], phoenixAfterMidnight);
+assert.deepEqual(tonightReports.map((report) => report.id), ["late"], "current-night report filtering should exclude prior-night history without deleting it");
 
 calls = [];
 const reportController = createReportController({
@@ -390,6 +425,7 @@ assert.deepEqual(calls, ["Refreshing owner data...", "ownerRequest", "renderOwne
 
 assert.doesNotThrow(() => renderReportSheetHtml({ bar: null }));
 assert.doesNotThrow(() => renderReportRows(null, { levels: {}, svg: { chevRight: "" } }));
+assert.match(renderReportRows([{ empty: true }], { levels: {}, svg: { chevRight: "" } }), /No recent reports tonight/, "empty report placeholders must not look like current-night user reports");
 assert.doesNotThrow(() => fallbackMapHtml({ bars: [{ id: "x", name: "X" }], userCoords: null, colors: {} }));
 assert.doesNotThrow(() => renderOwnerDashboardHtml({ data: null, controlVenues: null, levels: null }));
 assert.doesNotThrow(() => renderProfilePageHtml("home", null));

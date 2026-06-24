@@ -116,6 +116,7 @@ Deno.serve(async (req) => {
         cover_amount: signal.cover_amount,
         cover_active: signal.cover_active,
         event: signal.event,
+        event_updated_at: signal.event ? new Date().toISOString() : null,
         confidence: "high",
         momentum: body.momentum ?? "steady",
         sources: ["Owner override", "Fresh manual update"],

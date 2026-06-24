@@ -81,7 +81,8 @@ Deno.serve(async (req: Request) => {
   const waitMinutes = clampInt(body.wait_minutes, 0, 180, 0);
   const coverAmount = clean(body.cover_amount) || null;
   const coverActive = Boolean(body.cover_active) && !!coverAmount;
-  const event = clean(body.event) || null;
+  const hasEvent = Object.prototype.hasOwnProperty.call(body, "event");
+  const event = hasEvent ? clean(body.event) || null : undefined;
   const note = clean(body.note) || null;
 
   const { data: venue, error: venueError } = await supabase.from("venues").select("id,status,deprecated").eq("id", venueId).maybeSingle();
@@ -99,7 +100,7 @@ Deno.serve(async (req: Request) => {
     expires_at: new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString(),
     metadata: { note, submitted_via: "venue-status-ingest", auth_mode: authMode, device_id: deviceId },
     public_visible: true,
-    event,
+    event: event || null,
     cover_amount: coverAmount,
     cover_active: coverActive,
   });
@@ -108,21 +109,25 @@ Deno.serve(async (req: Request) => {
   const recomputeError = await recomputeVenue(supabase, venueId);
   if (recomputeError) return jsonResponse({ error: recomputeError.message }, 500, req);
 
+  const liveUpdate: Record<string, unknown> = {
+    cover_amount: coverAmount,
+    cover_active: coverActive,
+    updated_by_role: sourceType === "owner_override" ? "owner" : "venue_admin",
+    updated_at: new Date().toISOString(),
+  };
+  if (hasEvent) {
+    liveUpdate.event = event;
+    liveUpdate.event_updated_at = event ? new Date().toISOString() : null;
+  }
   const { error: updateError } = await supabase
     .from("live_status")
-    .update({
-      cover_amount: coverAmount,
-      cover_active: coverActive,
-      event: event || undefined,
-      updated_by_role: sourceType === "owner_override" ? "owner" : "venue_admin",
-      updated_at: new Date().toISOString(),
-    })
+    .update(liveUpdate)
     .eq("venue_id", venueId);
   if (updateError) return jsonResponse({ error: updateError.message }, 500, req);
 
   const { data: updatedStatus, error: statusError } = await supabase
     .from("active_venue_status")
-    .select("id,name,area,status,deprecated,tag,address,map_query,lat,lng,scenes,logo_key,open_hour,close_hour,last_call,line_leap_url,event,crowd_level,wait_minutes,confidence,confidence_score,confidence_signal_count,momentum,cover_amount,cover_active,sources,fresh_at,status_updated_at")
+    .select("id,name,area,status,deprecated,tag,address,map_query,lat,lng,scenes,logo_key,open_hour,close_hour,last_call,line_leap_url,event,event_updated_at,crowd_level,wait_minutes,confidence,confidence_score,confidence_signal_count,momentum,cover_amount,cover_active,sources,fresh_at,status_updated_at")
     .eq("id", venueId)
     .single();
   if (statusError) return jsonResponse({ error: statusError.message }, 500, req);

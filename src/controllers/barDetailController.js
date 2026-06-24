@@ -6,7 +6,8 @@ export function createBarDetailController(deps) {
         if (deps.showToast) deps.showToast("Venue unavailable");
         return;
       }
-      deps.setCurrentVenue(venue, "live");
+      const initialTab = meta && (meta.initialTab || (meta.focusDeal ? "deals" : "live"));
+      deps.setCurrentVenue(venue, initialTab || "live");
       if (deps.saveRecentVenue) deps.saveRecentVenue(id);
       deps.trackAppEvent(id, "detail_view", Object.assign({ area: venue.area, page: deps.activePage() }, meta || {}));
       if (deps.trackVenueDetailOpen) deps.trackVenueDetailOpen(id, meta || {});

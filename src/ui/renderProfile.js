@@ -1,13 +1,8 @@
 import { esc } from "../utils/dom.js";
-import { timeAgo } from "../utils/time.js";
 import { renderPhotoPicker } from "./renderShell.js";
 
 function menu(label, view, meta, svg) {
   return `<button class="profileMenuItem" onclick="openProfileView('${view}')"><span><b>${label}</b><small>${meta||""}</small></span>${svg.chevRight}</button>`;
-}
-
-function trustLabel(tier) {
-  return tier==="trusted"?"Trusted Reporter":tier==="normal"?"Building Trust":tier==="flagged"?"Needs Review":tier==="venue_staff"?"Venue Staff":tier==="owner"?"Owner":"New Reporter";
 }
 
 export function renderRewardsHtml({ rewardViewState }) {
@@ -20,14 +15,6 @@ export function renderRewardsHtml({ rewardViewState }) {
   const latest = state.redemptions&&state.redemptions[0];
   const fine = state.server ? "Server-backed balance · "+state.redeemed+" skips redeemed"+(latest?" · latest "+esc(latest.code):"") : "Rewards require the secure LineUp ledger. Points do not redeem from local device storage.";
   return `<div class="sectionlabel">REWARDS</div><div class="card rewardsHero"><div class="rewardTop"><div><b>LineUp Rewards</b><p class="muted" style="margin-top:7px">Earn points for useful nightlife signals. A free LineUp Skip should take real participation, not one night of taps.</p></div><div class="points">${state.points}</div></div><div class="rewardProgress" aria-label="${pct}% to LineUp Skip"><div style="width:${pct}%"></div></div><div class="row"><span class="muted">${left?left+" pts until free LineUp Skip":"Ready to redeem"}</span><b>${pct}%</b></div><button class="submit" onclick="redeemSkip()">${state.points>=state.goal?"Redeem LineUp Skip":"LineUp Skip locked"}</button><div class="rewardFine">${fine}</div></div><div class="card"><b>How to earn</b><div class="rewardRules"><div class="rewardRule"><b>Fresh crowd or line report</b><span>10 pts</span></div><div class="rewardRule"><b>Verified nearby report</b><span>15 pts</span></div><div class="rewardRule"><b>Verified check-in</b><span>15 pts</span></div><div class="rewardRule"><b>Approved venue insight</b><span>20 pts</span></div><div class="rewardRule"><b>Bring a friend onto LineUp</b><span>25 pts</span></div><div class="rewardRule"><b>Useful weekly streak</b><span>30 pts</span></div></div><p class="rewardFine">Anti-spam rules now live on the backend: report points cap at 3 per night, check-ins cap at 3 per night, and redemptions spend from the server ledger.</p></div>`;
-}
-
-export function renderProfileQualityHtml(profileSummary) {
-  if (!profileSummary) return `<div class="sectionlabel">SIGNAL PROFILE</div><div class="card profileSkeleton" aria-label="Loading signal profile"><span class="skeletonLine short"></span><span class="skeletonLine title"></span><span class="skeletonLine"></span><div class="profileGrid"><span class="skeletonButton"></span><span class="skeletonButton"></span><span class="skeletonButton"></span></div></div>`;
-  const profile = profileSummary || {};
-  const score = Math.round(Number(profile.reliability_score||0.5)*100);
-  const tier = profile.trust_tier || "new";
-  return `<div class="sectionlabel">SIGNAL PROFILE</div><div class="card"><b>Your signal quality</b><div class="trustBadge">${trustLabel(tier)} · ${score}%</div><p class="muted intelCopy">LineUp weighs verified reports and check-ins more heavily over time. Reports that agree with later staff, scout, and nearby signals increase trust; conflicting reports reduce it.</p><div class="profileGrid"><div class="profileStat"><b>${Number(profile.report_count||0)}</b><span>Total reports</span></div><div class="profileStat"><b>${Number(profile.verified_report_count||0)}</b><span>Verified reports</span></div><div class="profileStat"><b>${Number(profile.checkin_count||0)}</b><span>Check-ins</span></div><div class="profileStat"><b>${Number(profile.agreement_count||0)}</b><span>Agreements</span></div><div class="profileStat"><b>${Number(profile.disagreement_count||0)}</b><span>Conflicts</span></div><div class="profileStat"><b>${Number(profile.presence_count||0)}</b><span>Presence reads</span></div></div><div class="rewardFine">Last report: ${timeAgo(profile.last_report_at)} · Last check-in: ${timeAgo(profile.last_checkin_at)}</div></div>`;
 }
 
 export function legalCopy(kind) {
@@ -60,7 +47,7 @@ export function renderLegalSheetHtml(kind) {
 
 export function renderProfilePageHtml(view, ctx) {
   ctx = ctx || {};
-  const { svg = {}, accountPrefs = {}, authState = null, favs = [], activeBars = function(){return[]}, isFav = function(){return false}, interactionVisibility = function(){return"anonymous"}, publicName = function(){return"LineUp User"}, profileAvatar = function(){return"L"}, rewardViewState = function(){return{points:0,goal:500}}, profileSummary = null, presenceState = null, presenceCopy = function(){return{title:"Off",detail:"Tap to enable while using"}}, prefStatus = function(){return"unset"}, cap = function(value){return String(value||"")}, earlyAccess = {} } = ctx;
+  const { svg = {}, accountPrefs = {}, authState = null, favs = [], activeBars = function(){return[]}, isFav = function(){return false}, interactionVisibility = function(){return"anonymous"}, publicName = function(){return"LineUp User"}, profileAvatar = function(){return""}, rewardViewState = function(){return{points:0,goal:500}}, presenceState = null, presenceCopy = function(){return{title:"Off",detail:"Tap to enable while using"}}, prefStatus = function(){return"unset"}, cap = function(value){return String(value||"")}, earlyAccess = {} } = ctx;
   const mode = interactionVisibility();
   const views = {
     home() {

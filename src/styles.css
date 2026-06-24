@@ -82,39 +82,6 @@ body[data-page="accountGate"] .bottomnav{display:none}
 .ownerPreviewStrip b{display:block;font-size:13px}.ownerPreviewStrip span{display:block;margin-top:3px;color:var(--sub);font-size:11px;font-weight:800}.ownerPreviewStrip .secondaryBtn{width:auto;min-width:128px;height:42px;padding:0 12px}
 .field,select.field,input.field,textarea.field{max-width:100%;min-width:0;font-size:16px;line-height:1.2}.choicegrid{grid-template-columns:repeat(auto-fit,minmax(76px,1fr))}.choicegrid button{min-width:0;overflow-wrap:anywhere;line-height:1.1}.sheetActions{grid-template-columns:repeat(auto-fit,minmax(118px,1fr));align-items:stretch}.sheetActions .secondaryBtn,.sheetActions .submit{min-width:0;height:auto;min-height:50px;padding:9px 10px;line-height:1.15}.adminMini{grid-template-columns:repeat(2,minmax(0,1fr))}.adminVenueHeader{min-width:0}.adminVenueHeader>div{min-width:0}.adminVenueHeader span{overflow-wrap:anywhere}.tabs2,.seg{min-width:0;overflow-x:auto;scrollbar-width:none}.tabs2::-webkit-scrollbar,.seg::-webkit-scrollbar{display:none}
 @media (max-width:380px){.ownerPreviewStrip{align-items:flex-start;flex-direction:column}.ownerPreviewStrip .secondaryBtn{width:100%}.adminMini,.ctaGrid,.dealPerfGrid{grid-template-columns:1fr}.locationStatus{align-items:flex-start;flex-direction:column}.locationStatus span{text-align:left}.profileGrid{grid-template-columns:repeat(2,1fr)}}
-/* ── INSTALL PROMPT ── */
-.install-backdrop{position:fixed;inset:0;z-index:9998;background:rgba(15,23,42,.28);backdrop-filter:blur(12px);display:none;align-items:flex-end;justify-content:center;padding:0 16px calc(16px + env(safe-area-inset-bottom))}
-.install-backdrop.open{display:flex}
-.install-card{width:100%;max-width:430px;border-radius:26px;padding:18px;background:radial-gradient(circle at 82% 4%,rgba(37,99,235,.10),transparent 34%),var(--card);border:1px solid var(--border);box-shadow:0 26px 80px rgba(15,23,42,.16),0 0 44px rgba(37,99,235,.06);animation:sheetIn 260ms ease-out both}
-@keyframes sheetIn{from{opacity:0;transform:translateY(18px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
-.install-top{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.install-mini-brand{display:flex;align-items:center;gap:10px}
-.install-app-icon{width:44px;height:44px;border-radius:13px;display:block;object-fit:cover;box-shadow:0 0 22px rgba(37,99,235,.16),0 10px 24px rgba(15,23,42,.26)}
-.install-mini-copy{display:flex;flex-direction:column;gap:4px}
-.install-mini-wordmark{font-size:18px;display:block}
-.install-mini-subtitle{font-size:11px;font-weight:700;color:var(--sub)}
-.install-pill{height:26px;display:inline-flex;align-items:center;gap:6px;padding:0 10px;border-radius:999px;background:rgba(37,99,235,.13);color:var(--brand);font-size:10px;font-weight:900;letter-spacing:.05em;white-space:nowrap}
-.install-title{margin:18px 0 0;display:flex;flex-wrap:wrap;align-items:baseline;column-gap:9px;row-gap:4px;font-size:28px;line-height:1.04;font-weight:950;letter-spacing:-.06em;color:var(--text)}
-.install-title-wordmark{font-size:inherit;flex:0 0 auto}
-.install-copy{margin:10px 0 0;color:var(--sub);font-size:14px;line-height:1.45;font-weight:570}
-.install-benefits{display:grid;gap:9px;margin-top:16px}
-.install-benefit{display:flex;align-items:center;gap:10px;min-height:30px;color:var(--text);font-size:13px;font-weight:760}
-.benefit-badge{width:24px;height:24px;border-radius:9px;display:grid;place-items:center;background:rgba(37,99,235,.12);border:1px solid rgba(37,99,235,.18);flex:0 0 auto}
-.benefit-icon{position:relative;display:block;width:12px;height:12px}
-.benefit-icon.speed::before,.benefit-icon.speed::after{content:"";position:absolute;left:1px;right:1px;height:2px;border-radius:999px;background:var(--brand);transform:rotate(-18deg)}
-.benefit-icon.speed::before{top:3px}.benefit-icon.speed::after{top:7px;width:8px}
-.benefit-icon.app{border:2px solid var(--brand);border-radius:4px}.benefit-icon.app::after{content:"";position:absolute;left:50%;bottom:1px;width:3px;height:3px;border-radius:999px;background:var(--brand);transform:translateX(-50%)}
-.benefit-icon.live{width:10px;height:10px;border-radius:999px;background:var(--brand);box-shadow:0 0 12px rgba(37,99,235,.56)}
-.install-steps{margin-top:16px;display:grid;gap:8px}
-.install-step{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:16px;background:#F4F7FB;border:1px solid var(--border)}
-.step-num{width:26px;height:26px;border-radius:999px;display:grid;place-items:center;background:var(--brand);color:#FFFFFF;font-size:12px;font-weight:950;flex:0 0 auto}
-.step-text{font-size:13px;color:var(--text);font-weight:750}.step-text span{color:var(--brand)}
-.install-actions{margin-top:18px;display:grid;gap:10px}
-.install-primary{height:52px;width:100%;border:none;border-radius:17px;background:var(--brand);color:#FFFFFF;font-size:14px;font-weight:950;cursor:pointer;box-shadow:0 12px 30px rgba(37,99,235,.18)}
-.install-secondary{height:48px;width:100%;border-radius:17px;border:1px solid var(--border);background:#F4F7FB;color:var(--sub);font-size:14px;font-weight:850;cursor:pointer}
-.install-footer{margin-top:12px;text-align:center;color:var(--muted);font-size:11px;font-weight:650}
-#app.install-open{filter:blur(2px);opacity:.48;transform:scale(.99);pointer-events:none;transition:filter .2s,opacity .2s,transform .2s}
-@media (max-width:380px){.install-title{font-size:25px;column-gap:7px}}
 body[data-page="accountGate"] .bottomnav,body[data-page="setupGate"] .bottomnav,body[data-page="accountGate"] .seg,body[data-page="setupGate"] .seg{display:none}
 body[data-page="accountGate"] .topbar,body[data-page="setupGate"] .topbar{position:relative}
 .accountGate .field{margin-bottom:2px}.appleBtn{margin:8px 0 14px}.linkBtn{border:0;background:transparent;color:var(--brand);font:inherit;font-weight:900;padding:0;cursor:pointer}.setupGate{justify-content:flex-start}.setupAvatar{margin:0 0 16px}.profileMark img{width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block}.smallAvatar{width:74px;height:74px;margin:0 0 12px;font-size:34px}.favSetup{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.favSetup button{min-height:42px;border:1px solid var(--border);border-radius:13px;background:var(--surface-2);color:var(--sub);font-weight:900;cursor:pointer;padding:8px}.favSetup button.on{border-color:rgba(37,99,235,.62);background:var(--brand-soft);color:var(--brand)}.allFavs{grid-template-columns:1fr}
@@ -124,12 +91,6 @@ body[data-page="accountGate"] .topbar,body[data-page="setupGate"] .topbar{positi
 .dealIntro{margin:-2px 0 10px;color:var(--sub);font-size:12px;font-weight:800}.dealCard{display:grid;gap:9px;margin-bottom:10px;padding:14px;border:1px solid rgba(37,99,235,.26);border-radius:18px;background:var(--card);box-shadow:0 12px 32px rgba(15,23,42,.18);cursor:pointer}.dealCardTop,.dealMeta,.dealTrust{display:flex;align-items:center;justify-content:space-between;gap:10px}.dealCardTop span,.dealCardTop em,.dealDetailCard em{display:inline-flex;align-items:center;width:max-content;border-radius:999px;padding:5px 8px;background:var(--brand-soft);color:var(--brand);font-size:10px;font-weight:950;text-transform:uppercase;letter-spacing:.05em;font-style:normal}.dealCardTop em,.dealDetailCard em{background:#F4F7FB;color:var(--text);border:1px solid var(--border)}.dealCard h3{font-size:17px;line-height:1.12;letter-spacing:0}.dealCard p{color:var(--sub);font-size:12px;line-height:1.4;font-weight:750}.dealMeta b{font-size:12px}.dealMeta span,.dealTrust{color:var(--muted);font-size:11px;font-weight:850}.dealTrust{justify-content:flex-start}.dealBadge{margin:9px 0 0;padding:8px 9px;border:1px solid rgba(37,99,235,.18);border-radius:12px;background:rgba(37,99,235,.07);color:var(--sub);font-size:11px;font-weight:850;line-height:1.25}.dealBadge b{color:var(--brand-readable)}.dealBlock{display:grid;gap:9px;margin:12px 0}.dealDetailCard{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:start;padding:12px;border:1px solid rgba(37,99,235,.2);border-radius:15px;background:rgba(37,99,235,.07)}.dealDetailCard b{display:block;font-size:14px}.dealDetailCard p{margin-top:4px;color:var(--sub);font-size:12px;line-height:1.35}.dealDetailCard span{display:block;margin-top:5px;color:var(--muted);font-size:11px;font-weight:850}.dealEditor{margin-top:12px;padding:14px;border:1px solid rgba(37,99,235,.2);border-radius:18px;background:var(--card)}.dealPlan{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 11px;border:1px solid var(--border);border-radius:14px;background:var(--surface-2)}.dealPlan b{font-size:12px;color:var(--brand-readable)}.dealPlan span{color:var(--sub);font-size:11px;font-weight:850;text-align:right}.dealEditor textarea.field{min-height:74px;resize:vertical}.toggleLine{display:flex;align-items:center;gap:10px;margin-top:10px;color:var(--sub);font-size:12px;font-weight:900}.toggleLine input{width:19px;height:19px;accent-color:var(--brand)}.toggleLine.disabled{opacity:.55}.dealEditor button:disabled{opacity:.45;cursor:not-allowed}
 .dealPerformance{margin-top:12px}.dealPerfEmpty,.dealPerfCard{padding:14px;border:1px solid var(--border);border-radius:18px;background:var(--card);box-shadow:0 12px 30px rgba(15,23,42,.16)}.dealPerfEmpty b{display:block;font-size:14px}.dealPerfEmpty p,.dealPerfNote{margin-top:5px;color:var(--sub);font-size:12px;line-height:1.4;font-weight:800}.dealPerfCard{display:grid;gap:12px;margin-bottom:10px}.dealPerfTop{display:flex;align-items:start;justify-content:space-between;gap:12px}.dealPerfTop b{display:block;font-size:15px;line-height:1.15}.dealPerfTop span{display:block;margin-top:4px;color:var(--muted);font-size:11px;font-weight:900}.dealPerfTop em{display:inline-flex;border:1px solid var(--border);border-radius:999px;padding:5px 8px;color:var(--sub);background:#F4F7FB;font-size:10px;font-style:normal;font-weight:950;text-transform:uppercase}.dealPerfGroup{display:grid;gap:8px}.dealPerfGroup>span{color:var(--muted);font-size:10px;font-weight:950;text-transform:uppercase;letter-spacing:.06em}.dealPerfGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.dealPerfMetric{padding:10px;border:1px solid var(--border);border-radius:14px;background:var(--surface-2)}.dealPerfMetric b{display:block;color:var(--text);font-size:18px;line-height:1}.dealPerfMetric span{display:block;margin-top:5px;color:var(--muted);font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.03em}
 .dealTips{display:grid;gap:4px;margin:10px 0;padding:11px;border:1px solid rgba(37,99,235,.2);border-radius:14px;background:rgba(37,99,235,.07)}.dealTips b{font-size:12px;color:var(--text)}.dealTips span,.dealExamples{color:var(--sub);font-size:11px;font-weight:850;line-height:1.4}.dealExamples{margin:-2px 0 8px}
-/* ── PULL TO REFRESH ── */
-.ptr{position:fixed;left:50%;top:calc(8px + env(safe-area-inset-top));transform:translateX(-50%) translateY(-64px);z-index:70;display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;background:rgba(255,255,255,.94);border:1px solid var(--border);color:var(--sub);font-size:12px;font-weight:850;opacity:0;pointer-events:none;box-shadow:var(--shadow);transition:opacity .18s ease}
-.ptr.ready{color:var(--brand-readable);border-color:var(--brand-border)}
-.ptr-spin{width:14px;height:14px;border-radius:50%;border:2px solid var(--border);border-top-color:var(--brand);flex:0 0 auto}
-.ptr.loading .ptr-spin{animation:ptrSpin .7s linear infinite}
-@keyframes ptrSpin{to{transform:rotate(360deg)}}
 /* ── AUTH / ONBOARDING GATE ── */
 .authSub{color:var(--sub);font-size:14px;line-height:1.5;margin-bottom:2px}
 .authBenefits{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:18px 0 4px}
@@ -157,7 +118,6 @@ body[data-page="accountGate"] .topbar,body[data-page="setupGate"] .topbar{positi
   .navbtn.on{background:linear-gradient(180deg,rgba(37,99,235,.16),rgba(37,99,235,.04));box-shadow:inset 0 1px 0 var(--glass-highlight),0 0 0 1px var(--brand-border)}
   .notify{background:var(--glass-bg-strong);-webkit-backdrop-filter:blur(18px) saturate(150%);backdrop-filter:blur(18px) saturate(150%);border:1px solid var(--glass-border);box-shadow:inset 0 1px 0 var(--glass-highlight)}
   .seg{background:var(--glass-bg);-webkit-backdrop-filter:blur(18px) saturate(150%);backdrop-filter:blur(18px) saturate(150%);border:1px solid var(--glass-border);box-shadow:inset 0 1px 0 var(--glass-highlight)}
-  .install-card{background:radial-gradient(circle at 82% 4%,rgba(37,99,235,.10),transparent 34%),var(--glass-bg-strong);-webkit-backdrop-filter:blur(26px) saturate(150%);backdrop-filter:blur(26px) saturate(150%);border:1px solid var(--glass-border);box-shadow:0 26px 80px rgba(15,23,42,.16),inset 0 1px 0 var(--glass-highlight)}
 }
 
 /* Priority 14: calmer glass surfaces, deal-first layout, and mobile breathing room. */
@@ -264,3 +224,52 @@ body[data-page="accountGate"] .topbar,body[data-page="setupGate"] .topbar{positi
    its 88px phantom bottom padding to avoid unnecessary vertical scroll on small screens. ── */
 body[data-page="accountGate"] #app,body[data-page="setupGate"] #app{padding-bottom:calc(20px + env(safe-area-inset-bottom))}
 body[data-page="accountGate"] .accountGate,body[data-page="setupGate"] .accountGate{min-height:0}
+
+/* Priority 17A: real-device product reference polish. */
+.logo.logoAsset{background:linear-gradient(145deg,#17243A,#253858);border-color:rgba(15,23,42,.18);box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 8px 18px rgba(15,23,42,.12)}
+.logo.logoAsset img{max-width:88%;max-height:88%;filter:none}
+.logo.logoAsset .logotext{color:#FFFFFF}
+.logoFallback{font-size:12px}
+
+.tabs2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px;margin:0 0 16px;padding:4px;border:1px solid var(--border);border-radius:14px;background:var(--surface-2);overflow:visible}
+.tabs2.tabs3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.tabs2 button{min-width:0;min-height:42px;padding:9px 8px;border:0;border-radius:10px;background:transparent;color:var(--sub);font-size:13px;font-weight:850;text-align:center}
+.tabs2 button.on{border:0;background:var(--brand);color:#FFFFFF;box-shadow:0 6px 14px rgba(37,99,235,.16)}
+
+.activityCard h3{font-size:16px;line-height:1.2}
+.activityMetrics{display:grid;margin-top:10px}
+.activityMetric{display:grid;grid-template-columns:minmax(0,1fr) minmax(112px,46%);gap:14px;align-items:center;padding:12px 0;border-top:1px solid var(--border)}
+.activityMetric:first-child{border-top:0}
+.activityMetric span{color:var(--sub);font-size:13px;font-weight:800;line-height:1.35}
+.activityMetric b{min-width:0;color:var(--text);font-size:13px;font-weight:850;line-height:1.35;text-align:right;overflow-wrap:anywhere}
+.activityMetric b.tone-high{color:var(--high)}
+.activityMetric b.tone-medium{color:var(--medium)}
+.activityMetric b.tone-low{color:var(--low)}
+.reportsCard{padding-top:6px;padding-bottom:6px}
+.reportEmpty{display:grid;gap:4px;padding:13px 2px}
+.reportEmpty b{font-size:13px}
+.reportEmpty span{color:var(--sub);font-size:12px;line-height:1.4}
+
+.passwordField{position:relative}
+.passwordField .field{padding-right:50px}
+.passwordToggle{position:absolute;right:4px;top:50%;width:42px;height:42px;transform:translateY(-50%);display:grid;place-items:center;border:0;border-radius:11px;background:transparent;color:var(--muted);cursor:pointer}
+.passwordToggle.showing,.passwordToggle:focus-visible{color:var(--brand-readable);background:var(--brand-soft)}
+.photoPickerActions small{max-width:220px;color:var(--muted);font-size:10px;font-weight:700;line-height:1.35}
+
+#app,.detailStage{transform:translateY(var(--pull-distance,0px))}
+#app.ptr-animate,.detailStage.ptr-animate{transition:transform .26s cubic-bezier(.22,.8,.22,1)}
+.ptr{position:fixed;left:50%;top:calc(11px + env(safe-area-inset-top));transform:translateX(-50%) scale(calc(.9 + var(--pull-progress,0)*.1));z-index:39;display:flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;background:rgba(255,255,255,.96);border:1px solid var(--border);color:var(--sub);font-size:12px;font-weight:850;opacity:0;pointer-events:none;box-shadow:var(--shadow-card);transition:opacity .14s ease,transform .14s ease}
+.ptr.visible{opacity:1}
+.ptr.ready{color:var(--brand-readable);border-color:var(--brand-border)}
+.ptr-spin{width:14px;height:14px;border-radius:50%;border:2px solid var(--border-strong);border-top-color:var(--brand);flex:0 0 auto;transform:rotate(calc(var(--pull-progress,0)*180deg))}
+.ptr.loading .ptr-spin{animation:ptrSpin .7s linear infinite}
+@keyframes ptrSpin{to{transform:rotate(360deg)}}
+
+@media (max-width:390px){
+  .activityMetric{grid-template-columns:minmax(0,1fr) minmax(104px,45%);gap:10px}
+}
+@media (prefers-reduced-motion:reduce){
+  #app.ptr-animate,.detailStage.ptr-animate{transition-duration:.01ms}
+  .ptr{transition-duration:.01ms}
+  .ptr.loading .ptr-spin{animation:none}
+}

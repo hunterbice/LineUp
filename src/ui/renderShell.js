@@ -10,7 +10,11 @@ function photoIcon() {
 export function renderPhotoPicker(prefix, photoImg) {
   const hasPhoto = !!photoImg;
   const inputId = prefix + "PhotoInput";
-  return `<div class="photoPicker"><div class="photoPickerPreview${hasPhoto ? " hasPhoto" : ""}" id="${prefix}PhotoPreview" aria-hidden="true">${hasPhoto ? photoImg : photoIcon()}</div><div class="photoPickerActions"><button type="button" class="secondaryBtn photoPickerBtn" onclick="document.getElementById('${inputId}').click()">${hasPhoto ? "Change Photo" : "Choose from Library"}</button>${hasPhoto ? `<button type="button" class="linkBtn photoRemoveBtn" onclick="clearAvatar()">Remove</button>` : ""}</div><input type="file" id="${inputId}" class="visuallyHidden" accept="image/*" aria-label="Choose profile photo" onchange="handleAvatarFile(this)"></div>`;
+  return `<div class="photoPicker"><div class="photoPickerPreview${hasPhoto ? " hasPhoto" : ""}" id="${prefix}PhotoPreview" aria-hidden="true">${hasPhoto ? photoImg : photoIcon()}</div><div class="photoPickerActions"><button type="button" class="secondaryBtn photoPickerBtn" onclick="document.getElementById('${inputId}').click()">${hasPhoto ? "Change Photo" : "Choose from Library"}</button>${hasPhoto ? `<button type="button" class="linkBtn photoRemoveBtn" onclick="clearAvatar()">Remove</button>` : ""}<small>LineUp resizes large photos before saving.</small></div><input type="file" id="${inputId}" class="visuallyHidden" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" aria-label="Choose profile photo" onchange="handleAvatarFile(this)"></div>`;
+}
+
+function passwordEye() {
+  return '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="2.5"/></svg>';
 }
 
 export function renderAccountGateHtml() {
@@ -25,9 +29,9 @@ export function renderAccountGateHtml() {
       <div class="authBenefit"><span class="authBenefitIcon"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.5 7.5-8 9-4.5-1.5-8-4-8-9V6z"/></svg></span><b>Choose public or anonymous</b></div>
     </div>
     <input type="radio" name="authMode" id="authModeSignin" class="authModeInput" checked><input type="radio" name="authMode" id="authModeCreate" class="authModeInput">
-    <div class="authToggle"><label for="authModeSignin">Sign in</label><label for="authModeCreate">Create account</label></div>
+    <div class="authToggle"><label for="authModeSignin" onclick="setAuthPasswordMode(false)">Sign in</label><label for="authModeCreate" onclick="setAuthPasswordMode(true)">Create account</label></div>
     <label class="fieldLabel" for="authEmail">Email</label><input class="field" id="authEmail" type="email" autocomplete="email" placeholder="you@email.com">
-    <label class="fieldLabel" for="authPassword">Password</label><input class="field" id="authPassword" type="password" autocomplete="current-password" placeholder="6+ characters">
+    <label class="fieldLabel" for="authPassword">Password</label><div class="passwordField"><input class="field" id="authPassword" type="password" autocomplete="current-password" placeholder="6+ characters"><button type="button" class="passwordToggle" aria-label="Show password" onclick="togglePasswordVisibility('authPassword',this)">${passwordEye()}</button></div>
     <div class="authNameField"><label class="fieldLabel" for="authName">Display name</label><input class="field" id="authName" maxlength="32" placeholder="Display name"><small class="authHelper">Shown on reports if you choose not to appear anonymous.</small></div>
     <button class="submit authCta authCtaSignin" onclick="submitEmailAuth('signin')">Sign In</button><button class="submit authCta authCtaCreate" onclick="submitEmailAuth('signup')">Join Early Access</button>
     <p class="rewardFine authLegal">By continuing, you agree to LineUp’s <button class="linkBtn" onclick="showLegalSheet('privacy')">Privacy</button> and <button class="linkBtn" onclick="showLegalSheet('terms')">Terms</button>.</p>
