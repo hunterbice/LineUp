@@ -20,6 +20,9 @@ export function SiteFooter() {
           <Link to="/terms" className="text-muted-foreground transition-colors hover:text-foreground">
             Terms
           </Link>
+          <Link to="/support" className="text-muted-foreground transition-colors hover:text-foreground">
+            Support
+          </Link>
           <Link to="/login" className="font-semibold text-primary transition-colors hover:text-foreground">
             Bar login
           </Link>
