@@ -34,8 +34,19 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Publish direct legal and support entry points
+        run: |
+          for route in privacy terms support; do
+            mkdir -p "dist/$route"
+            cp dist/index.html "dist/$route/index.html"
+          done
+
       - name: Verify build output
-        run: test -f dist/index.html
+        run: |
+          test -f dist/index.html
+          test -f dist/privacy/index.html
+          test -f dist/terms/index.html
+          test -f dist/support/index.html
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
